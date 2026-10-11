@@ -1,0 +1,13 @@
+import { SYSTEM_CONFIG } from "~/app";
+
+import { SignUpPageClient } from "./page.client";
+
+export default async function SignUpPage() {
+  // await getCurrentUserOrRedirect(
+  //   undefined,
+  //   SYSTEM_CONFIG.redirectAfterSignIn,
+  //   true,
+  // );
+
+  return <SignUpPageClient />;
+}
