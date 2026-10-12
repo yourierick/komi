@@ -48,6 +48,26 @@ class ProductTotalReviewsTest extends TestCase
         $response->assertJsonPath('data.total_reviews', 3);
     }
 
+    public function test_product_resource_total_reviews_counts_only_approved_comments()
+    {
+        $product = Product::factory()->create();
+
+        ProductComment::factory()->count(3)->create([
+            'product_id' => $product->id,
+            'approved' => true,
+        ]);
+
+        ProductComment::factory()->count(2)->create([
+            'product_id' => $product->id,
+            'approved' => false,
+        ]);
+
+        $response = $this->getJson('/api/v1/public/products/' . $product->id);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.total_reviews', 3);
+    }
+
     public function test_total_reviews_is_zero_for_product_without_comments()
     {
         $product = Product::factory()->create();

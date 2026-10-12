@@ -242,13 +242,13 @@ export function RentalCard({
 
             {/* Short description */}
             {rental.short_description && (
-              <p className="text-[10px] text-muted-foreground line-clamp-2">
+              <p className="text-[14px] text-muted-foreground line-clamp-2">
                 {rental.short_description}
               </p>
             )}
 
             {/* Location */}
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-[14px] text-muted-foreground">
               {rental.location && `${rental.location}, `}
               {rental.city && `${rental.city}, `}
               {rental.country}

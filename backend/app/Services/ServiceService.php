@@ -10,7 +10,7 @@ class ServiceService
 {
     public function index(Request $request, $userId)
     {
-        return Service::where('user_id', $userId)->with('user')->get();
+        return Service::where('user_id', $userId)->with('user')->withCount('comments')->get();
     }
 
     public function store(Request $request, $userId): Service

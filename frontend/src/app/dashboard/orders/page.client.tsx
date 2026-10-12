@@ -2325,8 +2325,8 @@ export function OrdersPageClient() {
             </Button>
           </DialogFooter>
         </DialogContent>
-            </Dialog>
-            </DialogContent>
+        </Dialog>
+        </DialogContent>
       </Dialog> 
 
       <style>{`

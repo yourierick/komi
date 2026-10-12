@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "~/lib/hooks/use-auth";
 import { productAPI, shopAPI } from "~/lib/api";
+import { toast } from "sonner";
 import { ProductCommentsDashboard } from "~/ui/components/product-comments-dashboard";
 import { Button } from "~/ui/primitives/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/ui/primitives/card";
@@ -265,10 +266,12 @@ export default function ProductDetailPageClient() {
       }
       formDataToSend.append('is_on_sale', formData.is_on_sale ? '1' : '0');
       formDataToSend.append('currency', formData.currency);
-      formDataToSend.append('min_order', formData.min_order);
+      if (formData.min_order) {
+        formDataToSend.append('min_order', formData.min_order);
+      }
       formDataToSend.append('status', formData.status);
       formDataToSend.append('commission_type', formData.commission_type);
-      if (formData.commission_type !== 'none') {
+      if (formData.commission_type !== 'none' && formData.commission_value) {
         formDataToSend.append('commission_value', formData.commission_value);
       }
       formDataToSend.append('features', JSON.stringify(formData.features));
@@ -305,6 +308,7 @@ export default function ProductDetailPageClient() {
         });
         setValidationErrors(errors);
         setError("Veuillez corriger les erreurs dans le formulaire");
+        toast.error("Le formulaire est invalide. Veuillez corriger les erreurs indiquées.");
       } else {
         setError("Erreur lors de la mise à jour du produit");
       }
@@ -469,6 +473,9 @@ export default function ProductDetailPageClient() {
                         </option>
                       ))}
                     </select>
+                    {validationErrors.shop_id && (
+                      <p className="text-sm text-destructive">{validationErrors.shop_id}</p>
+                    )}
                   </div>
                 )}
 
@@ -500,6 +507,9 @@ export default function ProductDetailPageClient() {
                     onChange={(e) => setFormData({ ...formData, sub_category: e.target.value })}
                     placeholder="Sous-catégorie (optionnel)"
                   />
+                  {validationErrors.sub_category && (
+                    <p className="text-sm text-destructive">{validationErrors.sub_category}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -511,6 +521,9 @@ export default function ProductDetailPageClient() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Décrivez votre produit..."
                   />
+                  {validationErrors.description && (
+                    <p className="text-sm text-destructive">{validationErrors.description}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -521,6 +534,9 @@ export default function ProductDetailPageClient() {
                     onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
                     placeholder="Description courte (optionnel)"
                   />
+                  {validationErrors.short_description && (
+                    <p className="text-sm text-destructive">{validationErrors.short_description}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -531,6 +547,9 @@ export default function ProductDetailPageClient() {
                     onChange={(e) => setFormData({ ...formData, model: e.target.value })}
                     placeholder="Modèle (optionnel)"
                   />
+                  {validationErrors.model && (
+                    <p className="text-sm text-destructive">{validationErrors.model}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -541,6 +560,9 @@ export default function ProductDetailPageClient() {
                     onChange={(e) => setFormData({ ...formData, marque: e.target.value })}
                     placeholder="Marque (optionnel)"
                   />
+                  {validationErrors.marque && (
+                    <p className="text-sm text-destructive">{validationErrors.marque}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -578,6 +600,9 @@ export default function ProductDetailPageClient() {
                     onChange={(e) => setFormData({ ...formData, old_price: e.target.value })}
                     placeholder="149.99"
                   />
+                  {validationErrors.old_price && (
+                    <p className="text-sm text-destructive">{validationErrors.old_price}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -592,17 +617,25 @@ export default function ProductDetailPageClient() {
                     onChange={(e) => setFormData({ ...formData, discount_percent: e.target.value })}
                     placeholder="33.33"
                   />
+                  {validationErrors.discount_percent && (
+                    <p className="text-sm text-destructive">{validationErrors.discount_percent}</p>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    id="is_on_sale"
-                    type="checkbox"
-                    checked={formData.is_on_sale}
-                    onChange={(e) => setFormData({ ...formData, is_on_sale: e.target.checked })}
-                    className="h-4 w-4 rounded border-input"
-                  />
-                  <Label htmlFor="is_on_sale">En promotion</Label>
+                <div className="grid gap-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="is_on_sale"
+                      type="checkbox"
+                      checked={formData.is_on_sale}
+                      onChange={(e) => setFormData({ ...formData, is_on_sale: e.target.checked })}
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    <Label htmlFor="is_on_sale">En promotion</Label>
+                  </div>
+                  {validationErrors.is_on_sale && (
+                    <p className="text-sm text-destructive">{validationErrors.is_on_sale}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -618,6 +651,9 @@ export default function ProductDetailPageClient() {
                     <option value="XAF">XAF</option>
                     <option value="CDF">CDF</option>
                   </select>
+                  {validationErrors.currency && (
+                    <p className="text-sm text-destructive">{validationErrors.currency}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -630,6 +666,9 @@ export default function ProductDetailPageClient() {
                     onChange={(e) => setFormData({ ...formData, min_order: e.target.value })}
                     placeholder="1"
                   />
+                  {validationErrors.min_order && (
+                    <p className="text-sm text-destructive">{validationErrors.min_order}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -643,6 +682,9 @@ export default function ProductDetailPageClient() {
                     <option value="available">En stock</option>
                     <option value="unavailable">Rupture de stock</option>
                   </select>
+                  {validationErrors.status && (
+                    <p className="text-sm text-destructive">{validationErrors.status}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -657,6 +699,9 @@ export default function ProductDetailPageClient() {
                     <option value="fixed">Fixe</option>
                     <option value="percentage">Pourcentage</option>
                   </select>
+                  {validationErrors.commission_type && (
+                    <p className="text-sm text-destructive">{validationErrors.commission_type}</p>
+                  )}
                 </div>
 
                 {formData.commission_type !== "none" && (
@@ -671,6 +716,9 @@ export default function ProductDetailPageClient() {
                       onChange={(e) => setFormData({ ...formData, commission_value: e.target.value })}
                       placeholder={formData.commission_type === "percentage" ? "10" : "50"}
                     />
+                    {validationErrors.commission_value && (
+                      <p className="text-sm text-destructive">{validationErrors.commission_value}</p>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -689,6 +737,9 @@ export default function ProductDetailPageClient() {
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="Ville, Pays"
                   />
+                  {validationErrors.location && (
+                    <p className="text-sm text-destructive">{validationErrors.location}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -738,6 +789,9 @@ export default function ProductDetailPageClient() {
                   <Plus className="mr-2 h-4 w-4" />
                   Ajouter une caractéristique
                 </Button>
+                {validationErrors.features && (
+                  <p className="text-sm text-destructive">{validationErrors.features}</p>
+                )}
               </CardContent>
             </Card>
 
@@ -786,6 +840,9 @@ export default function ProductDetailPageClient() {
                   <Plus className="mr-2 h-4 w-4" />
                   Ajouter une spécification
                 </Button>
+                {validationErrors.specifications && (
+                  <p className="text-sm text-destructive">{validationErrors.specifications}</p>
+                )}
               </CardContent>
             </Card>
 

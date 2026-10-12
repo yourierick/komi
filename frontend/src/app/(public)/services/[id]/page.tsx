@@ -1,9 +1,10 @@
 "use client";
 
-import { MapPin, Package, Play, Star, BadgeCheck } from "lucide-react";
+import { Mail, MapPin, MessageCircle, Package, Play, Star, BadgeCheck } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { publicServiceAPI, serviceCommentAPI } from "~/lib/api";
 import { Comments } from "~/ui/components/comments";
@@ -98,12 +99,14 @@ export default function ServiceDetailPage() {
   const [error, setError] = useState<null | string>(null);
   const [selectedMedia, setSelectedMedia] = useState<null | string>(null);
   const [isVideo, setIsVideo] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
 
   const mediaItems = React.useMemo(() => {
     const items: { type: "image" | "video"; url: string }[] = [];
     if (service?.images) {
-      service.images.forEach((image) => {
+      service.images.filter(Boolean).forEach((image) => {
         items.push({ type: "image", url: image });
       });
     }
@@ -113,21 +116,16 @@ export default function ServiceDetailPage() {
     return items;
   }, [service?.images, service?.video]);
 
-  const handleContact = () => {
-    if (!service?.user) return;
-
-    // Prevent owner from contacting themselves
-    if (user?.id === service.user.id) {
-      alert("Vous ne pouvez pas vous contacter vous-même");
-      return;
-    }
-
-    setContactDialogOpen(true);
+  const handleImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomOrigin({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
   };
 
   const contactViaWhatsApp = () => {
     if (!service?.user?.phone) {
-      alert("Numéro de téléphone non disponible");
+      toast.error("Numéro de téléphone non disponible");
       return;
     }
     const message = encodeURIComponent(`Bonjour, je suis intéressé par votre service "${service.title}"`);
@@ -137,7 +135,7 @@ export default function ServiceDetailPage() {
 
   const contactViaEmail = () => {
     if (!service?.user?.email) {
-      alert("Email non disponible");
+      toast.error("Email non disponible");
       return;
     }
     const subject = encodeURIComponent(`Intérêt pour votre service "${service.title}"`);
@@ -154,8 +152,9 @@ export default function ServiceDetailPage() {
         const response = await publicServiceAPI.get(serviceId);
         const serviceData = response.data.data as Service;
         setService(serviceData);
-        if (serviceData.images && serviceData.images.length > 0) {
-          setSelectedMedia(serviceData.images[0]);
+        const firstImage = serviceData.images?.find((img) => img);
+        if (firstImage) {
+          setSelectedMedia(firstImage);
           setIsVideo(false);
         } else if (serviceData.video) {
           setSelectedMedia(serviceData.video);
@@ -243,7 +242,8 @@ export default function ServiceDetailPage() {
       <main className="flex-1 py-10">
         <div
           className={`
-            container px-4
+            container px-4 animate-in fade-in duration-300 ease-out
+            motion-safe:slide-in-from-bottom-2
             md:px-6
           `}
         >
@@ -267,10 +267,15 @@ export default function ServiceDetailPage() {
             {/* Media gallery */}
             <div className="space-y-4">
               {/* Main media */}
-              <div className={`
-                relative aspect-square overflow-hidden rounded-xl border
-                bg-gray-100
-              `}>
+              <div
+                className={`
+                  relative aspect-square overflow-hidden rounded-lg bg-muted
+                  ${!isVideo && selectedMedia ? "cursor-zoom-in" : ""}
+                `}
+                onMouseEnter={() => !isVideo && setIsZoomed(true)}
+                onMouseLeave={() => setIsZoomed(false)}
+                onMouseMove={handleImageMouseMove}
+              >
                 {selectedMedia ? (
                   isVideo ? (
                     <video
@@ -282,8 +287,16 @@ export default function ServiceDetailPage() {
                   ) : (
                     <img
                       alt={service.title}
-                      className="h-full w-full object-cover"
+                      className={`
+                        h-full w-full object-cover animate-in fade-in
+                        duration-200 ease-out transition-transform
+                      `}
+                      key={selectedMedia}
                       src={selectedMedia}
+                      style={{
+                        transform: isZoomed ? "scale(2.5)" : "scale(1)",
+                        transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
+                      }}
                     />
                   )
                 ) : (
@@ -300,15 +313,22 @@ export default function ServiceDetailPage() {
                 <div className="grid grid-cols-4 gap-2">
                   {mediaItems.map((media, index) => (
                     <button
+                      aria-label={
+                        media.type === "video"
+                          ? `Vidéo de ${service.title}`
+                          : `Image ${index + 1} de ${service.title}`
+                      }
+                      aria-pressed={selectedMedia === media.url}
                       className={`
                         relative aspect-square overflow-hidden rounded-md
-                        border-2 transition-colors duration-200 ease-out
+                        border-2 transition-[border-color,transform] duration-200
+                        ease-out active:scale-95
                         ${
                         selectedMedia === media.url
                           ? "border-primary"
                           : `
                             border-transparent
-                            hover:border-muted-foreground
+                            hover-fine:border-muted-foreground
                           `
                       }
                       `}
@@ -328,7 +348,8 @@ export default function ServiceDetailPage() {
                         </div>
                       ) : (
                         <img
-                          alt={`${service.title} ${index + 1}`}
+                          alt=""
+                          aria-hidden="true"
                           className="h-full w-full object-cover"
                           src={media.url}
                         />
@@ -344,10 +365,10 @@ export default function ServiceDetailPage() {
               <div className="mb-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <h1 className="text-3xl font-bold">{service.title}</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-balance">{service.title}</h1>
                     <p className="mt-2 text-lg text-muted-foreground">
                       {CATEGORY_LABELS[service.category] || service.category}
-                      {service.sub_category && ` • ${service.sub_category}`}
+                      {service.sub_category && ` · ${service.sub_category}`}
                     </p>
                   </div>
                   {service.verified && (
@@ -364,23 +385,23 @@ export default function ServiceDetailPage() {
                 </div>
 
                 {(service.rating || service.total_reviews) && (
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex items-center gap-1.5">
                     <div className="flex items-center gap-1">
                       {renderStars(Number(service.rating || 0))}
                     </div>
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-medium tabular-nums">
                       {Number(service.rating || 0).toFixed(1)}
                     </span>
                     <span className="text-sm text-muted-foreground">
-                      ({service.total_reviews || 0} avis)
+                      · {service.total_reviews || 0} avis
                     </span>
                   </div>
                 )}
               </div>
 
-              <div className="mb-6">
-                <span className="text-3xl font-bold">
-                  {Number(service.price || 0).toFixed(2)} {getCurrencySymbol(service.currency)}
+              <div className="mb-6 flex flex-wrap items-baseline gap-2">
+                <span className="text-3xl font-bold tabular-nums">
+                  {getCurrencySymbol(service.currency)}{Number(service.price || 0).toFixed(2)}
                 </span>
                 <span className="text-lg text-muted-foreground">
                   {FREQUENCY_LABELS[service.payment_frequency || 'hourly']}
@@ -391,54 +412,63 @@ export default function ServiceDetailPage() {
                 <p className="mb-6 text-muted-foreground">{service.description}</p>
               )}
 
-              <div className="mb-6 flex flex-wrap items-center gap-4">
-                <span
-                  className={`
-                    rounded-full px-3 py-1 text-sm font-medium
-                    ${
-                    service.status === "available"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-700"
-                  }
-                  `}
-                >
-                  {service.status === "available" ? "Disponible" : "Indisponible"}
-                </span>
+              <div className="mb-6" aria-atomic="true" aria-live="polite">
+                {service.status === "available" ? (
+                  <p className="flex items-center gap-2 text-sm font-medium text-green-600">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 motion-safe:animate-ping" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                    </span>
+                    Disponible
+                  </p>
+                ) : (
+                  <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <span className="h-2 w-2 rounded-full bg-gray-400" />
+                    Indisponible
+                  </p>
+                )}
               </div>
 
-              {(service.city || service.location) && (
-                <div className={`
-                  mb-6 flex items-center gap-2 text-muted-foreground
-                `}>
-                  <MapPin className="h-4 w-4" />
+              {(service.city || service.location || service.country) && (
+                <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4 shrink-0" />
                   <span>
-                    {service.city || service.location}
-                    {service.country ? `, ${service.country}` : ""}
+                    {[service.city || service.location, service.country].filter(Boolean).join(', ')}
                   </span>
                 </div>
               )}
 
               {user?.id !== service.user?.id && (
-                <Button
-                  onClick={() => {
-                    openWithItem({
-                      id: service.id,
-                      type: 'service',
-                      name: service.title,
-                      image: service.images?.[0] || '',
-                      price: Number(service.price),
-                      quantity: 1,
-                      category: service.category,
-                      payment_frequency: service.payment_frequency,
-                    });
-                  }}
-                  className={`
-                    w-full
-                    sm:w-auto
-                  `}
-                >
-                  Précommander et Contacter le prestataire
-                </Button>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      openWithItem({
+                        id: service.id,
+                        type: 'service',
+                        name: service.title,
+                        image: service.images?.[0] || '',
+                        price: Number(service.price),
+                        quantity: 1,
+                        category: service.category,
+                        payment_frequency: service.payment_frequency,
+                      });
+                    }}
+                  >
+                    Précommander et Discuter
+                  </Button>
+
+                  {(service.user?.phone || service.user?.email) && (
+                    <Button
+                      className="flex-1"
+                      onClick={() => setContactDialogOpen(true)}
+                      variant="outline"
+                    >
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      Contacter le prestataire
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -455,15 +485,16 @@ export default function ServiceDetailPage() {
             {/* Features */}
             {service.features && service.features.length > 0 && (
               <section>
-                <h2 className="mb-4 text-2xl font-bold">Caractéristiques</h2>
-                <ul className="space-y-2">
+                <h2 className="mb-4 text-xl font-semibold tracking-tight">Caractéristiques</h2>
+                <ul className="space-y-2.5">
                   {service.features.map((feature, index) => (
-                    <li className="flex items-start" key={index}>
+                    <li className="flex items-start gap-2.5" key={index}>
                       <span className={`
-                        mt-1 mr-2 h-2 w-2 rounded-full bg-primary
+                        mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary
                       `} />
-                      <span>
-                        <strong>{feature.key}</strong> : {feature.value}
+                      <span className="text-sm">
+                        <strong className="font-medium">{feature.key}</strong>
+                        <span className="text-muted-foreground"> : {feature.value}</span>
                       </span>
                     </li>
                   ))}
@@ -474,11 +505,11 @@ export default function ServiceDetailPage() {
             {/* Specifications */}
             {service.specifications && service.specifications.length > 0 && (
               <section>
-                <h2 className="mb-4 text-2xl font-bold">Spécifications</h2>
-                <div className="space-y-2">
+                <h2 className="mb-4 text-xl font-semibold tracking-tight">Spécifications</h2>
+                <div className="divide-y">
                   {service.specifications.map((spec, index) => (
                     <div
-                      className="flex justify-between border-b pb-2 text-sm"
+                      className="flex justify-between py-2.5 text-sm"
                       key={index}
                     >
                       <span className="font-medium capitalize">
@@ -496,8 +527,8 @@ export default function ServiceDetailPage() {
 
           {/* Seller info */}
           {service.user && (
-            <div className="mt-8 rounded-lg border border-gray-200 bg-muted p-4">
-              <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Fournisseur</h3>
+            <div className="mt-8 rounded-lg border border-border bg-muted p-4">
+              <h3 className="mb-3 text-sm font-semibold">Fournisseur</h3>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-medium">{service.user.name}</span>
@@ -527,37 +558,39 @@ export default function ServiceDetailPage() {
         </div>
       </main>
 
-      {/* Contact Choice Dialog */}
-      <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>
+      {/* Contact choice dialog */}
+      <Dialog onOpenChange={setContactDialogOpen} open={contactDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Choisir le moyen de contact</DialogTitle>
+            <DialogTitle>Contacter le prestataire</DialogTitle>
             <DialogDescription>
-              Comment souhaitez-vous contacter le prestataire "{service?.user?.name}" ?
+              Comment souhaitez-vous contacter {service?.user?.name} ?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {service?.user?.phone && (
-              <Button 
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700 sm:w-auto"
                 onClick={contactViaWhatsApp}
-                className="w-full sm:w-auto bg-green-500 hover:bg-green-600"
               >
+                <MessageCircle className="mr-2 h-4 w-4" />
                 WhatsApp
               </Button>
             )}
             {service?.user?.email && (
-              <Button 
+              <Button
+                className="w-full sm:w-auto"
                 onClick={contactViaEmail}
                 variant="outline"
-                className="w-full sm:w-auto"
               >
+                <Mail className="mr-2 h-4 w-4" />
                 Email
               </Button>
             )}
-            <Button 
-              variant="ghost" 
-              onClick={() => setContactDialogOpen(false)}
+            <Button
               className="w-full sm:w-auto"
+              onClick={() => setContactDialogOpen(false)}
+              variant="ghost"
             >
               Annuler
             </Button>

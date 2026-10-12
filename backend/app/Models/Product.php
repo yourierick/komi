@@ -89,4 +89,12 @@ class Product extends Model
         // Use comments_count from withCount if available, otherwise query
         return $this->comments_count ?? $this->comments()->count();
     }
+
+    /**
+     * Get number of approved comments (publicly visible reviews)
+     */
+    public function getApprovedReviewsAttribute(): int
+    {
+        return $this->approved_comments_count ?? $this->approvedComments()->count();
+    }
 }

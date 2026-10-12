@@ -20,14 +20,14 @@ class PublicProductController extends Controller
             $query->where('user_id', $request->supplier);
         }
 
-        $products = $query->with('shop')->withCount('comments')->get();
+        $products = $query->with('shop')->withCount('approvedComments')->get();
 
         return PublicProductResource::collection($products);
     }
 
     public function show($id)
     {
-        $product = Product::with('shop')->withCount('comments')->find($id);
+        $product = Product::with('shop')->withCount('approvedComments')->find($id);
 
         if (!$product) {
             return response()->json(['message' => 'Product not found'], 404);
@@ -54,13 +54,13 @@ class PublicProductController extends Controller
     public function featured()
     {
         $latestProducts = Product::with('shop')
-            ->withCount('comments')
+            ->withCount('approvedComments')
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
 
         $highestRatedProducts = Product::with('shop')
-            ->withCount('comments')
+            ->withCount('approvedComments')
             ->orderBy('rating', 'desc')
             ->take(5)
             ->get();

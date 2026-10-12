@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Minus, Plus, Star, Store, TrendingUp, User, BadgeCheck } from "lucide-react";
+import { Loader2, MessageCircle, Minus, Plus, Star, Store, TrendingUp, User, BadgeCheck } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { useEffect, useState } from "react";
@@ -116,7 +116,11 @@ export default function ProductDetailPage() {
   /* ----------------------------- Local state ----------------------------- */
   const [product, setProduct] = useState<null | Product>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<null | string>(null);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   const [quantity, setQuantity] = React.useState(1);
+  const [sharing, setSharing] = useState(false);
   const [reseller, setReseller] = useState<null | { id: number; name: string; email: string }>(null);
   const refCode = searchParams.get('ref');
 
@@ -127,6 +131,7 @@ export default function ProductDetailPage() {
         const response = await publicProductAPI.get(id);
         const productData = response.data.data;
         setProduct(productData);
+        setSelectedImage(productData.images?.find((img: string) => img) || productData.image || null);
         // Set initial quantity to min_order if it exists
         if (productData.min_order && productData.min_order > 0) {
           setQuantity(productData.min_order);
@@ -166,9 +171,9 @@ export default function ProductDetailPage() {
   }, [product]);
 
   const canResell = React.useMemo(() => {
-    if (!product) return false;
-    const isNotOwner = product.user?.id !== user?.id;
-    const hasCommission = product.commission_type !== 'none';
+    if (!product || !user) return false;
+    const isNotOwner = product.user?.id !== user.id;
+    const hasCommission = product.commission_type !== 'none' && (product.commission_value ?? 0) > 0;
     return isNotOwner && hasCommission;
   }, [user, product]);
 
@@ -177,6 +182,13 @@ export default function ProductDetailPage() {
     const minOrder = product?.min_order || 1;
     setQuantity((prev) => (newQty >= minOrder ? newQty : prev));
   }, [product]);
+
+  const handleImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomOrigin({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
+  };
 
   const renderStars = () => {
     const rating = Number(product?.rating ?? 0);
@@ -208,13 +220,13 @@ export default function ProductDetailPage() {
           })}
         </div>
         {rating > 0 && (
-          <span className="text-sm text-muted-foreground">
-            ({rating.toFixed(1)})
+          <span className="text-sm font-medium tabular-nums">
+            {rating.toFixed(1)}
           </span>
         )}
         {product?.total_reviews && product.total_reviews > 0 ? (
           <span className="text-sm text-muted-foreground">
-            ({product.total_reviews} avis)
+            · {product.total_reviews} avis
           </span>
         ):('')}
       </div>
@@ -283,7 +295,8 @@ export default function ProductDetailPage() {
       <main className="flex-1 py-10">
         <div
           className={`
-            container px-4
+            container px-4 animate-in fade-in duration-300 ease-out
+            motion-safe:slide-in-from-bottom-2
             md:px-6
           `}
         >
@@ -305,24 +318,82 @@ export default function ProductDetailPage() {
             `}
           >
             {/* ------------------------ Product image ------------------------ */}
-            <div
-              className={`
-                relative aspect-square overflow-hidden rounded-lg bg-muted
-              `}
-            >
-              <img
-                alt={product.name}
-                className="h-full w-full object-cover"
-                src={product.images?.[0] || product.image || ""}
-              />
-              {discountPercentage > 0 && (
-                <div
-                  className={`
-                    absolute top-2 left-2 rounded-full bg-red-500 px-2 py-1
-                    text-xs font-bold text-white
-                  `}
-                >
-                  -{discountPercentage}%
+            <div className="space-y-4">
+              {/* Main image with zoom */}
+              <div
+                className={`
+                  relative aspect-square cursor-zoom-in overflow-hidden
+                  rounded-lg bg-muted
+                `}
+                onMouseEnter={() => setIsZoomed(true)}
+                onMouseLeave={() => setIsZoomed(false)}
+                onMouseMove={handleImageMouseMove}
+              >
+                {selectedImage ? (
+                  <img
+                    alt={product.name}
+                    className={`
+                      h-full w-full object-cover animate-in fade-in
+                      duration-200 ease-out transition-transform
+                    `}
+                    key={selectedImage}
+                    src={selectedImage}
+                    style={{
+                      transform: isZoomed ? "scale(2.5)" : "scale(1)",
+                      transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
+                    }}
+                  />
+                ) : (
+                  <div className={`
+                    flex h-full w-full items-center justify-center
+                    text-muted-foreground
+                  `}>
+                    Aucune image
+                  </div>
+                )}
+                {discountPercentage > 0 && (
+                  <div
+                    className={`
+                      absolute top-2 left-2 rounded-full bg-red-500 px-2 py-1
+                      text-xs font-bold text-white
+                    `}
+                  >
+                    -{discountPercentage}%
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnail gallery */}
+              {product.images && product.images.filter(Boolean).length > 1 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {product.images.filter(Boolean).map((image, index) => (
+                    <button
+                      aria-label={`Image ${index + 1} de ${product.name}`}
+                      aria-pressed={selectedImage === image}
+                      className={`
+                        relative aspect-square overflow-hidden rounded-md
+                        border-2 transition-[border-color,transform] duration-200
+                        ease-out active:scale-95
+                        ${
+                        selectedImage === image
+                          ? "border-primary"
+                          : `
+                            border-transparent
+                            hover-fine:border-muted-foreground
+                          `
+                      }
+                      `}
+                      key={index}
+                      onClick={() => setSelectedImage(image)}
+                    >
+                      <img
+                        alt=""
+                        aria-hidden="true"
+                        className="h-full w-full object-cover"
+                        src={image}
+                      />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -331,7 +402,7 @@ export default function ProductDetailPage() {
             <div className="flex flex-col">
               {/* Title & rating */}
               <div className="mb-6">
-                <h1 className="text-3xl font-bold">{product.name}</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-balance">{product.name}</h1>
 
                 <div className="mt-2 flex items-center gap-2">
                   {renderStars()}
@@ -343,18 +414,18 @@ export default function ProductDetailPage() {
                 <p className="text-lg font-medium text-muted-foreground">
                   {CATEGORY_LABELS[product.category] || product.category}
                 </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-3xl font-bold">
+                <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                  <span className="text-3xl font-bold tabular-nums">
                     {getCurrencySymbol(product.currency)}{Number(product.price).toFixed(2)}
                   </span>
                   {product.old_price && (
-                    <span className="text-xl text-muted-foreground line-through">
+                    <span className="text-xl text-muted-foreground line-through tabular-nums">
                       {getCurrencySymbol(product.currency)}{Number(product.old_price).toFixed(2)}
                     </span>
                   )}
                   {product.discount_percent && (
                     <span className={`
-                      rounded bg-red-500 px-2 py-1 text-sm font-semibold
+                      rounded-full bg-red-500 px-2 py-1 text-xs font-bold
                       text-white
                     `}>
                       -{Number(product.discount_percent).toFixed(0)}%
@@ -379,8 +450,8 @@ export default function ProductDetailPage() {
                         </span>
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-orange-900">Commande minimum</p>
-                        <p className="text-[10px] text-orange-700">Quantité requise</p>
+                        <p className="text-sm font-medium text-orange-900">Commande minimum</p>
+                        <p className="text-[12px] text-orange-700">Quantité requise</p>
                       </div>
                     </div>
                   )}
@@ -395,16 +466,14 @@ export default function ProductDetailPage() {
                         flex h-10 w-10 items-center justify-center rounded-full
                         bg-purple-100
                       `}>
-                        <span className="text-sm font-bold text-purple-700">
-                          {product.commission_type === 'fixed' ? '$' : '%'}
-                        </span>
+                        <TrendingUp className="h-5 w-5 text-purple-700" />
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-purple-900">Commission</p>
-                        <p className="text-sm font-bold text-purple-700">
+                        <p className="text-sm font-medium text-purple-900">Commission à la revente</p>
+                        <p className="text-[12px] font-semibold text-purple-700 tabular-nums">
                           {product.commission_type === 'fixed' 
-                            ? `${getCurrencySymbol(product.currency)}${Number(product.commission_value).toFixed(2)}`
-                            : `${Number(product.commission_value).toFixed(0)}%`}
+                            ? `${getCurrencySymbol(product.currency)}${Number(product.commission_value).toFixed(2)} par vente`
+                            : `${Number(product.commission_value).toFixed(0)}% par vente`}
                         </p>
                       </div>
                     </div>
@@ -420,9 +489,16 @@ export default function ProductDetailPage() {
               {/* Stock */}
               <div aria-atomic="true" aria-live="polite" className="mb-6">
                 {product.status === "available" ? (
-                  <p className="text-sm font-medium text-green-600">En stock</p>
+                  <p className="flex items-center gap-2 text-sm font-medium text-green-600">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 motion-safe:animate-ping" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                    </span>
+                    En stock
+                  </p>
                 ) : (
-                  <p className="text-sm font-medium text-red-500">
+                  <p className="flex items-center gap-2 text-sm font-medium text-red-500">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
                     Rupture de stock
                   </p>
                 )}
@@ -456,9 +532,9 @@ export default function ProductDetailPage() {
               {/* Seller & shop info */}
               {product.user && (
                 <div className={`
-                  mb-6 rounded-lg border border-gray-200 bg-muted p-4
+                  mb-6 rounded-lg border border-border bg-muted p-4
                 `}>
-                  <h3 className="mb-3 text-sm font-semibold bg-muted">Fournisseur</h3>
+                  <h3 className="mb-3 text-sm font-semibold">Fournisseur</h3>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-4 w-4 text-muted-foreground" />
@@ -483,16 +559,48 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              {/* Quantity selector & Add to cart */}
+              {/* Quantity selector & actions */}
+              {(!user || user.id !== product.user?.id) && (
+                <div
+                  className={`
+                    mb-6 flex flex-col gap-4
+                    sm:flex-row sm:items-center
+                  `}
+                >
+                  {/* Quantity stepper */}
+                  <div className={`
+                    flex items-center rounded-md border border-input
+                  `}>
+                    <Button
+                      aria-label="Réduire la quantité"
+                      className="h-9 w-9 rounded-r-none"
+                      disabled={quantity <= (product.min_order || 1)}
+                      onClick={() => handleQuantityChange(quantity - 1)}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span
+                      aria-live="polite"
+                      className={`
+                        w-12 text-center text-sm font-semibold tabular-nums
+                      `}
+                    >
+                      {quantity}
+                    </span>
+                    <Button
+                      aria-label="Augmenter la quantité"
+                      className="h-9 w-9 rounded-l-none"
+                      onClick={() => handleQuantityChange(quantity + 1)}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
 
-              <div
-                className={`
-                  mb-6 flex flex-col gap-4
-                  sm:flex-row sm:items-center
-                `}
-              >
-                {/* Chat with supplier */}
-                {!user || user.id !== product.user?.id ? (
+                  {/* Chat with supplier */}
                   <Button
                     className="flex-1"
                     disabled={product.status !== "available"}
@@ -517,7 +625,6 @@ export default function ProductDetailPage() {
                     <MessageCircle className="mr-2 h-4 w-4" />
                     Precommander et Discuter
                   </Button>
-                ) : null}
 
                 {/* Resale button */}
                 {canResell && (
@@ -525,12 +632,14 @@ export default function ProductDetailPage() {
                     className={`
                       flex-1 bg-gradient-to-r from-green-500 to-emerald-600
                       text-white shadow-md shadow-green-500/20
-                      hover:from-green-600 hover:to-emerald-700
-                      hover:shadow-lg hover:shadow-green-500/30
-                      hover:-translate-y-0.5
-                      transition-all duration-200
+                      transition-[transform,box-shadow] duration-200 ease-out
+                      hover-fine:from-green-600 hover-fine:to-emerald-700
+                      hover-fine:shadow-lg hover-fine:shadow-green-500/30
+                      hover-fine:-translate-y-0.5
                     `}
+                    disabled={sharing}
                     onClick={async () => {
+                      setSharing(true);
                       try {
                         const response = await resellerLinkAPI.createProductLink(product.id);
                         const link = response.data.data.link;
@@ -578,14 +687,21 @@ export default function ProductDetailPage() {
                           console.error("Error creating reseller link:", error);
                           toast.error("Erreur lors de la création du lien de revente");
                         }
+                      } finally {
+                        setSharing(false);
                       }
                     }}
                   >
-                    <TrendingUp className="mr-2 h-4 w-4" />
+                    {sharing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                    )}
                     Revendre
                   </Button>
                 )}
               </div>
+              )}
             </div>
           </div>
 
@@ -600,33 +716,38 @@ export default function ProductDetailPage() {
           >
             {/* Features */}
             <section>
-              <h2 className="mb-4 text-2xl font-bold">Caractéristiques</h2>
-              <ul className="space-y-2">
-                {Array.isArray(product.features) ? (
-                    (product.features as any[]).map((condition, index) => (
-                      <li className="flex items-start" key={`condition-${index}`}>
-                        <span className={`
-                          mt-1 mr-2 h-2 w-2 rounded-full bg-primary
-                        `} />
-                        <span>
-                          <strong>{condition.key}</strong> : {condition.value}
-                        </span>
-                      </li>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground">{String(product.features)}</p>
-                  )}
-              </ul>
+              <h2 className="mb-4 text-xl font-semibold tracking-tight">Caractéristiques</h2>
+              {Array.isArray(product.features) && product.features.length > 0 ? (
+                <ul className="space-y-2.5">
+                  {(product.features as any[]).map((condition, index) => (
+                    <li className="flex items-start gap-2.5" key={`condition-${index}`}>
+                      <span className={`
+                        mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary
+                      `} />
+                      <span className="text-sm">
+                        <strong className="font-medium">{condition.key}</strong>
+                        <span className="text-muted-foreground"> : {condition.value}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {product.features && !Array.isArray(product.features)
+                    ? String(product.features)
+                    : "Aucune caractéristique renseignée."}
+                </p>
+              )}
             </section>
 
             {/* Specifications */}
             <section>
-              <h2 className="mb-4 text-2xl font-bold">Spécifications</h2>
-              <div className="space-y-2">
-                {Array.isArray(product.specifications) ? (
+              <h2 className="mb-4 text-xl font-semibold tracking-tight">Spécifications</h2>
+              <div className="divide-y">
+                {Array.isArray(product.specifications) && product.specifications.length > 0 ? (
                     product.specifications.map((spec: any, index: number) => (
                       <div
-                        className="flex justify-between border-b pb-2 text-sm"
+                        className="flex justify-between py-2.5 text-sm"
                         key={index}
                       >
                         <span className="font-medium capitalize">
@@ -637,10 +758,10 @@ export default function ProductDetailPage() {
                         </span>
                       </div>
                     ))
-                  ) : typeof product.specifications === "object" ? (
+                  ) : typeof product.specifications === "object" && product.specifications !== null && Object.keys(product.specifications).length > 0 ? (
                     Object.entries(product.specifications).map(([key, value]) => (
                       <div
-                        className="flex justify-between border-b pb-2 text-sm"
+                        className="flex justify-between py-2.5 text-sm"
                         key={key}
                       >
                         <span className="font-medium capitalize">
@@ -652,13 +773,17 @@ export default function ProductDetailPage() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground">{String(product.specifications)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {product.specifications && !Array.isArray(product.specifications)
+                        ? String(product.specifications)
+                        : "Aucune spécification renseignée."}
+                    </p>
                   )}
               </div>
             </section>
 
             {/* Comments and Reviews */}
-            <section className="mt-8">
+            <section className="mt-8 md:col-span-2">
               <ProductComments 
                 productId={product.id} 
                 productOwnerId={product.user?.id}

@@ -17,12 +17,11 @@ class ProductService
     {
         $requestData = $request->all();
 
-        // Filter out empty strings for old_price and discount_percent
-        if (isset($requestData['old_price']) && $requestData['old_price'] === '') {
-            unset($requestData['old_price']);
-        }
-        if (isset($requestData['discount_percent']) && $requestData['discount_percent'] === '') {
-            unset($requestData['discount_percent']);
+        // Filter out empty strings for numeric nullable fields
+        foreach (['old_price', 'discount_percent', 'commission_value', 'min_order'] as $field) {
+            if (isset($requestData[$field]) && $requestData[$field] === '') {
+                unset($requestData[$field]);
+            }
         }
 
         if (isset($requestData['features']) && is_string($requestData['features'])) {
@@ -57,6 +56,8 @@ class ProductService
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
             'shop_id' => 'nullable|integer|exists:shops,id',
         ]);
+
+        $this->validateCommissionLimit($validator, $requestData);
 
         if ($validator->fails()) {
             \Log::info($validator->errors());
@@ -119,12 +120,11 @@ class ProductService
 
         $requestData = $request->all();
 
-        // Filter out empty strings for old_price and discount_percent
-        if (isset($requestData['old_price']) && $requestData['old_price'] === '') {
-            unset($requestData['old_price']);
-        }
-        if (isset($requestData['discount_percent']) && $requestData['discount_percent'] === '') {
-            unset($requestData['discount_percent']);
+        // Filter out empty strings for numeric nullable fields
+        foreach (['old_price', 'discount_percent', 'commission_value', 'min_order'] as $field) {
+            if (isset($requestData[$field]) && $requestData[$field] === '') {
+                unset($requestData[$field]);
+            }
         }
 
         if (isset($requestData['features']) && is_string($requestData['features'])) {
@@ -159,6 +159,8 @@ class ProductService
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
             'shop_id' => 'nullable|integer|exists:shops,id',
         ]);
+
+        $this->validateCommissionLimit($validator, $requestData, $product);
 
         if ($validator->fails()) {
             \Log::info($validator->errors());
@@ -221,5 +223,32 @@ class ProductService
     {
         $product = Product::where('user_id', $userId)->findOrFail($id);
         $product->delete();
+    }
+
+    /**
+     * Commission is capped at 20% of the product price.
+     * For "percentage" type the value itself must be <= 20.
+     */
+    private function validateCommissionLimit($validator, array $requestData, ?Product $product = null): void
+    {
+        $validator->after(function ($validator) use ($requestData, $product) {
+            if (!isset($requestData['commission_value'])) {
+                return;
+            }
+
+            $commissionType = $requestData['commission_type'] ?? $product?->commission_type ?? 'none';
+            if ($commissionType === 'none') {
+                return;
+            }
+
+            $value = (float) $requestData['commission_value'];
+            $limit = $commissionType === 'percentage'
+                ? 20
+                : (float) ($requestData['price'] ?? $product?->price ?? 0) * 0.2;
+
+            if ($value > $limit) {
+                $validator->errors()->add('commission_value', 'La commission ne peut pas dépasser 20% du prix du produit.');
+            }
+        });
     }
 }

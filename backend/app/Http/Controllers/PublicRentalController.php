@@ -20,14 +20,14 @@ class PublicRentalController extends Controller
             $query->where('user_id', $request->supplier);
         }
 
-        $rentals = $query->withCount('comments')->get();
+        $rentals = $query->with('user')->withCount('approvedComments')->get();
 
         return PublicRentalResource::collection($rentals);
     }
 
     public function show($id)
     {
-        $rental = Rental::where('status', 'available')->withCount('comments')->find($id);
+        $rental = Rental::where('status', 'available')->with('user')->withCount('approvedComments')->find($id);
 
         if (!$rental) {
             return response()->json(['message' => 'Rental not found'], 404);

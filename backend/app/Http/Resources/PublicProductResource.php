@@ -28,7 +28,9 @@ class PublicProductResource extends JsonResource
             'verified' => $this->verified,
             'status' => $this->status,
             'rating' => $this->rating ?? 0,
-            'total_reviews' => $this->total_reviews ?? 0,
+            'total_reviews' => $this->approved_reviews ?? 0,
+            'commission_type' => $this->commission_type,
+            'commission_value' => $this->commission_value,
             'features' => $this->features,
             'specifications' => $this->specifications,
             'user' => [

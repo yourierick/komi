@@ -10,12 +10,19 @@ class RentalService
 {
     public function index(Request $request, $userId)
     {
-        return Rental::where('user_id', $userId)->with('user')->get();
+        return Rental::where('user_id', $userId)->with('user')->withCount('comments')->get();
     }
 
     public function store(Request $request, $userId): Rental
     {
         $requestData = $request->all();
+
+        // Filter out empty strings for numeric nullable fields
+        foreach (['old_price', 'discount_percent', 'commission_value'] as $field) {
+            if (isset($requestData[$field]) && $requestData[$field] === '') {
+                unset($requestData[$field]);
+            }
+        }
 
         if (isset($requestData['conditions']) && is_string($requestData['conditions'])) {
             $requestData['conditions'] = json_decode($requestData['conditions'], true);
@@ -49,6 +56,8 @@ class RentalService
             'images' => 'nullable|array|max:6',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
+
+        $this->validateCommissionLimit($validator, $requestData);
 
         if ($validator->fails()) {
             throw new \Illuminate\Validation\ValidationException($validator);
@@ -111,6 +120,13 @@ class RentalService
 
         $requestData = $request->all();
 
+        // Filter out empty strings for numeric nullable fields
+        foreach (['old_price', 'discount_percent', 'commission_value'] as $field) {
+            if (isset($requestData[$field]) && $requestData[$field] === '') {
+                unset($requestData[$field]);
+            }
+        }
+
         if (isset($requestData['conditions']) && is_string($requestData['conditions'])) {
             $requestData['conditions'] = json_decode($requestData['conditions'], true);
         }
@@ -143,6 +159,8 @@ class RentalService
             'images' => 'nullable|array|max:6',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
+
+        $this->validateCommissionLimit($validator, $requestData, $rental);
 
         if ($validator->fails()) {
             \Log::info($validator->errors());
@@ -187,5 +205,32 @@ class RentalService
         }
 
         $rental->delete();
+    }
+
+    /**
+     * Commission is capped at 20% of the rental price.
+     * For "percentage" type the value itself must be <= 20.
+     */
+    private function validateCommissionLimit($validator, array $requestData, ?Rental $rental = null): void
+    {
+        $validator->after(function ($validator) use ($requestData, $rental) {
+            if (!isset($requestData['commission_value'])) {
+                return;
+            }
+
+            $commissionType = $requestData['commission_type'] ?? $rental?->commission_type ?? 'none';
+            if ($commissionType === 'none') {
+                return;
+            }
+
+            $value = (float) $requestData['commission_value'];
+            $limit = $commissionType === 'percentage'
+                ? 20
+                : (float) ($requestData['price'] ?? $rental?->price ?? 0) * 0.2;
+
+            if ($value > $limit) {
+                $validator->errors()->add('commission_value', 'La commission ne peut pas dépasser 20% du prix de la location.');
+            }
+        });
     }
 }

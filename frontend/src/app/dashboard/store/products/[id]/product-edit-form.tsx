@@ -161,14 +161,22 @@ export function ProductEditForm({ product, productId, onSuccess, onCancel, onErr
       formDataToSend.append('model', formData.model);
       formDataToSend.append('marque', formData.marque);
       formDataToSend.append('price', formData.price);
-      formDataToSend.append('old_price', formData.old_price);
-      formDataToSend.append('discount_percent', formData.discount_percent);
+      if (formData.old_price) {
+        formDataToSend.append('old_price', formData.old_price);
+      }
+      if (formData.discount_percent) {
+        formDataToSend.append('discount_percent', formData.discount_percent);
+      }
       formDataToSend.append('is_on_sale', formData.is_on_sale ? '1' : '0');
       formDataToSend.append('currency', formData.currency);
-      formDataToSend.append('min_order', formData.min_order);
+      if (formData.min_order) {
+        formDataToSend.append('min_order', formData.min_order);
+      }
       formDataToSend.append('status', formData.status);
       formDataToSend.append('commission_type', formData.commission_type);
-      formDataToSend.append('commission_value', formData.commission_value);
+      if (formData.commission_value) {
+        formDataToSend.append('commission_value', formData.commission_value);
+      }
       formDataToSend.append('features', JSON.stringify(formData.features));
       formDataToSend.append('specifications', JSON.stringify(formData.specifications));
       if (formData.shop_id) {

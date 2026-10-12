@@ -303,14 +303,14 @@ export function ProductCard({
 
             {/* Short description */}
             {product.short_description && (
-              <p className="text-[10px] text-muted-foreground line-clamp-2">
+              <p className="text-[14px] text-muted-foreground line-clamp-2">
                 {product.short_description}
               </p>
             )}
 
             {/* Brand/Marque */}
             {product.marque && (
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+              <p className="text-[14px] text-muted-foreground uppercase tracking-wide">
                 {product.marque}
               </p>
             )}

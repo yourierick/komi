@@ -30,7 +30,7 @@ class PublicServiceResource extends JsonResource
             'status' => $this->status,
             'verified' => $this->verified,
             'rating' => $this->rating ?? 0,
-            'total_reviews' => $this->total_reviews ?? 0,
+            'total_reviews' => $this->approved_reviews ?? 0,
             'features' => $this->features,
             'specifications' => $this->specifications,
             'images' => $this->images ? array_map(function ($image) {

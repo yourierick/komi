@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "~/lib/hooks/use-auth";
 import { rentalAPI, rentalCommentAPI } from "~/lib/api";
+import { toast } from "sonner";
 import { CommentsDashboard } from "~/ui/components/comments-dashboard";
 import { Button } from "~/ui/primitives/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/ui/primitives/card";
@@ -188,13 +189,17 @@ export default function RentalDetailPageClient() {
       fd.append("city", formData.city);
       fd.append("country", formData.country);
       fd.append("price", formData.price);
-      fd.append("old_price", formData.old_price);
-      fd.append("discount_percent", formData.discount_percent);
+      if (formData.old_price) {
+        fd.append("old_price", formData.old_price);
+      }
+      if (formData.discount_percent) {
+        fd.append("discount_percent", formData.discount_percent);
+      }
       fd.append("currency", formData.currency);
       fd.append("payment_frequency", formData.payment_frequency);
       fd.append("status", formData.status);
       fd.append("commission_type", formData.commission_type);
-      if (formData.commission_type !== 'none') {
+      if (formData.commission_type !== 'none' && formData.commission_value) {
         fd.append("commission_value", formData.commission_value);
       }
       fd.append("conditions", JSON.stringify(formData.conditions));
@@ -219,6 +224,7 @@ export default function RentalDetailPageClient() {
         });
         setValidationErrors(errors);
         setError("Veuillez corriger les erreurs dans le formulaire");
+        toast.error("Le formulaire est invalide. Veuillez corriger les erreurs indiquées.");
       } else {
         setError("Erreur lors de la mise à jour de la location");
       }
@@ -667,6 +673,7 @@ export default function RentalDetailPageClient() {
                     rows={4}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   />
+                  {validationErrors.description && <p className="text-sm text-destructive">{validationErrors.description}</p>}
                 </div>
 
                 <div className="grid gap-2">
@@ -678,6 +685,7 @@ export default function RentalDetailPageClient() {
                     rows={2}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   />
+                  {validationErrors.short_description && <p className="text-sm text-destructive">{validationErrors.short_description}</p>}
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -702,6 +710,7 @@ export default function RentalDetailPageClient() {
                       value={formData.sub_category}
                       onChange={(e) => setFormData({ ...formData, sub_category: e.target.value })}
                     />
+                    {validationErrors.sub_category && <p className="text-sm text-destructive">{validationErrors.sub_category}</p>}
                   </div>
                 </div>
               </CardContent>
@@ -713,14 +722,17 @@ export default function RentalDetailPageClient() {
                 <div className="grid gap-2">
                   <Label>Adresse / Lieu</Label>
                   <Input value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} />
+                  {validationErrors.location && <p className="text-sm text-destructive">{validationErrors.location}</p>}
                 </div>
                 <div className="grid gap-2">
                   <Label>Ville</Label>
                   <Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
+                  {validationErrors.city && <p className="text-sm text-destructive">{validationErrors.city}</p>}
                 </div>
                 <div className="grid gap-2">
                   <Label>Pays</Label>
                   <Input value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} />
+                  {validationErrors.country && <p className="text-sm text-destructive">{validationErrors.country}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -736,10 +748,12 @@ export default function RentalDetailPageClient() {
                 <div className="grid gap-2">
                   <Label>Ancien prix</Label>
                   <Input type="number" step="0.01" min="0" value={formData.old_price} onChange={(e) => setFormData({ ...formData, old_price: e.target.value })} />
+                  {validationErrors.old_price && <p className="text-sm text-destructive">{validationErrors.old_price}</p>}
                 </div>
                 <div className="grid gap-2">
                   <Label>Pourcentage de réduction</Label>
                   <Input type="number" step="0.01" min="0" max="100" value={formData.discount_percent} onChange={(e) => setFormData({ ...formData, discount_percent: e.target.value })} />
+                  {validationErrors.discount_percent && <p className="text-sm text-destructive">{validationErrors.discount_percent}</p>}
                 </div>
                 <div className="grid gap-2">
                   <Label>Devise</Label>
@@ -750,6 +764,7 @@ export default function RentalDetailPageClient() {
                   >
                     {["USD","EUR","XAF","CDF","GBP","JPY","CAD","AUD","CHF","CNY"].map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
+                  {validationErrors.currency && <p className="text-sm text-destructive">{validationErrors.currency}</p>}
                 </div>
                 <div className="grid gap-2">
                   <Label>Fréquence</Label>
@@ -762,6 +777,7 @@ export default function RentalDetailPageClient() {
                     <option value="weekly">Par semaine</option>
                     <option value="monthly">Par mois</option>
                   </select>
+                  {validationErrors.payment_frequency && <p className="text-sm text-destructive">{validationErrors.payment_frequency}</p>}
                 </div>
                 <div className="grid gap-2">
                   <Label>Statut</Label>
@@ -775,6 +791,7 @@ export default function RentalDetailPageClient() {
                     <option value="maintenance">En maintenance</option>
                     <option value="unavailable">Indisponible</option>
                   </select>
+                  {validationErrors.status && <p className="text-sm text-destructive">{validationErrors.status}</p>}
                 </div>
                 <div className="grid gap-2">
                   <Label>Type de commission</Label>
@@ -787,6 +804,7 @@ export default function RentalDetailPageClient() {
                     <option value="fixed">Fixe</option>
                     <option value="percentage">Pourcentage</option>
                   </select>
+                  {validationErrors.commission_type && <p className="text-sm text-destructive">{validationErrors.commission_type}</p>}
                 </div>
                 {formData.commission_type !== 'none' && (
                   <div className="grid gap-2">
@@ -802,6 +820,7 @@ export default function RentalDetailPageClient() {
                       onChange={(e) => setFormData({ ...formData, commission_value: e.target.value })}
                       placeholder={formData.commission_type === 'fixed' ? '0.00' : '0'}
                     />
+                    {validationErrors.commission_value && <p className="text-sm text-destructive">{validationErrors.commission_value}</p>}
                   </div>
                 )}
               </CardContent>
@@ -821,6 +840,7 @@ export default function RentalDetailPageClient() {
                 <Button type="button" variant="outline" onClick={addCondition}>
                   <Plus className="mr-2 h-4 w-4" />Ajouter
                 </Button>
+                {validationErrors.conditions && <p className="text-sm text-destructive">{validationErrors.conditions}</p>}
               </CardContent>
             </Card>
 
@@ -838,6 +858,7 @@ export default function RentalDetailPageClient() {
                 <Button type="button" variant="outline" onClick={addSpecification}>
                   <Plus className="mr-2 h-4 w-4" />Ajouter
                 </Button>
+                {validationErrors.specifications && <p className="text-sm text-destructive">{validationErrors.specifications}</p>}
               </CardContent>
             </Card>
 

@@ -4,16 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "~/lib/hooks/use-auth";
 import { productAPI, shopAPI } from "~/lib/api";
+import { toast } from "sonner";
 import { Button } from "~/ui/primitives/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/ui/primitives/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "~/ui/primitives/dialog";
 import { Input } from "~/ui/primitives/input";
 import { Label } from "~/ui/primitives/label";
 import { ArrowLeft, Loader2, Plus, X, Upload, Image as ImageIcon } from "lucide-react";
@@ -112,8 +105,6 @@ export default function NewProductPageClient() {
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [commissionConsentOpen, setCommissionConsentOpen] = useState(false);
-  const [pendingCommissionType, setPendingCommissionType] = useState<"fixed" | "percentage" | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -142,6 +133,23 @@ export default function NewProductPageClient() {
     setValidationErrors({});
     setSubmitting(true);
 
+    if (formData.commission_type !== "none" && formData.commission_value) {
+      const price = parseFloat(formData.price);
+      const commissionValue = parseFloat(formData.commission_value);
+      const exceedsLimit = formData.commission_type === "percentage"
+        ? commissionValue > 20
+        : !isNaN(price) && commissionValue > price * 0.2;
+
+      if (exceedsLimit) {
+        setValidationErrors({
+          commission_value: "La commission ne peut pas dépasser 20 % du prix du produit",
+        });
+        setError("Veuillez corriger les erreurs dans le formulaire");
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
@@ -153,14 +161,20 @@ export default function NewProductPageClient() {
       formDataToSend.append('model', formData.model);
       formDataToSend.append('marque', formData.marque);
       formDataToSend.append('price', formData.price);
-      formDataToSend.append('old_price', formData.old_price);
-      formDataToSend.append('discount_percent', formData.discount_percent);
+      if (formData.old_price) {
+        formDataToSend.append('old_price', formData.old_price);
+      }
+      if (formData.discount_percent) {
+        formDataToSend.append('discount_percent', formData.discount_percent);
+      }
       formDataToSend.append('is_on_sale', formData.is_on_sale ? '1' : '0');
       formDataToSend.append('currency', formData.currency);
-      formDataToSend.append('min_order', formData.min_order);
+      if (formData.min_order) {
+        formDataToSend.append('min_order', formData.min_order);
+      }
       formDataToSend.append('status', formData.status);
       formDataToSend.append('commission_type', formData.commission_type);
-      if (formData.commission_type !== 'none') {
+      if (formData.commission_type !== 'none' && formData.commission_value) {
         formDataToSend.append('commission_value', formData.commission_value);
       }
       formDataToSend.append('features', JSON.stringify(formData.features));
@@ -195,6 +209,7 @@ export default function NewProductPageClient() {
         });
         setValidationErrors(errors);
         setError("Veuillez corriger les erreurs dans le formulaire");
+        toast.error("Le formulaire est invalide. Veuillez corriger les erreurs indiquées.");
       } else {
         setError("Erreur lors de la création du produit");
       }
@@ -205,28 +220,7 @@ export default function NewProductPageClient() {
   };
 
   const handleCommissionTypeChange = (value: "none" | "fixed" | "percentage") => {
-    if (value === "none") {
-      setFormData({ ...formData, commission_type: "none", commission_value: "" });
-      setPendingCommissionType(null);
-      setCommissionConsentOpen(false);
-      return;
-    }
-
-    setPendingCommissionType(value);
-    setCommissionConsentOpen(true);
-  };
-
-  const acceptCommission = () => {
-    if (pendingCommissionType) {
-      setFormData((prev) => ({ ...prev, commission_type: pendingCommissionType }));
-    }
-    setPendingCommissionType(null);
-    setCommissionConsentOpen(false);
-  };
-
-  const rejectCommission = () => {
-    setPendingCommissionType(null);
-    setCommissionConsentOpen(false);
+    setFormData({ ...formData, commission_type: value, commission_value: "" });
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -339,6 +333,9 @@ export default function NewProductPageClient() {
                       </option>
                     ))}
                   </select>
+                  {validationErrors.shop_id && (
+                    <p className="text-sm text-destructive">{validationErrors.shop_id}</p>
+                  )}
                 </div>
               )}
 
@@ -371,6 +368,9 @@ export default function NewProductPageClient() {
                   onChange={(e) => setFormData({ ...formData, sub_category: e.target.value })}
                   placeholder="Sous-catégorie (optionnel)"
                 />
+                {validationErrors.sub_category && (
+                  <p className="text-sm text-destructive">{validationErrors.sub_category}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -382,6 +382,9 @@ export default function NewProductPageClient() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Décrivez votre produit..."
                 />
+                {validationErrors.description && (
+                  <p className="text-sm text-destructive">{validationErrors.description}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -392,6 +395,9 @@ export default function NewProductPageClient() {
                   onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
                   placeholder="Description courte (optionnel)"
                 />
+                {validationErrors.short_description && (
+                  <p className="text-sm text-destructive">{validationErrors.short_description}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -402,6 +408,9 @@ export default function NewProductPageClient() {
                   onChange={(e) => setFormData({ ...formData, model: e.target.value })}
                   placeholder="Modèle (optionnel)"
                 />
+                {validationErrors.model && (
+                  <p className="text-sm text-destructive">{validationErrors.model}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -412,6 +421,9 @@ export default function NewProductPageClient() {
                   onChange={(e) => setFormData({ ...formData, marque: e.target.value })}
                   placeholder="Marque (optionnel)"
                 />
+                {validationErrors.marque && (
+                  <p className="text-sm text-destructive">{validationErrors.marque}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -449,6 +461,9 @@ export default function NewProductPageClient() {
                   onChange={(e) => setFormData({ ...formData, old_price: e.target.value })}
                   placeholder="149.99"
                 />
+                {validationErrors.old_price && (
+                  <p className="text-sm text-destructive">{validationErrors.old_price}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -463,17 +478,25 @@ export default function NewProductPageClient() {
                   onChange={(e) => setFormData({ ...formData, discount_percent: e.target.value })}
                   placeholder="33.33"
                 />
+                {validationErrors.discount_percent && (
+                  <p className="text-sm text-destructive">{validationErrors.discount_percent}</p>
+                )}
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  id="is_on_sale"
-                  type="checkbox"
-                  checked={formData.is_on_sale}
-                  onChange={(e) => setFormData({ ...formData, is_on_sale: e.target.checked })}
-                  className="h-4 w-4 rounded border-input"
-                />
-                <Label htmlFor="is_on_sale">En promotion</Label>
+              <div className="grid gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="is_on_sale"
+                    type="checkbox"
+                    checked={formData.is_on_sale}
+                    onChange={(e) => setFormData({ ...formData, is_on_sale: e.target.checked })}
+                    className="h-4 w-4 rounded border-input"
+                  />
+                  <Label htmlFor="is_on_sale">En promotion</Label>
+                </div>
+                {validationErrors.is_on_sale && (
+                  <p className="text-sm text-destructive">{validationErrors.is_on_sale}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -489,6 +512,9 @@ export default function NewProductPageClient() {
                   <option value="XAF">XAF</option>
                   <option value="CDF">CDF</option>
                 </select>
+                {validationErrors.currency && (
+                  <p className="text-sm text-destructive">{validationErrors.currency}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -501,6 +527,9 @@ export default function NewProductPageClient() {
                   onChange={(e) => setFormData({ ...formData, min_order: e.target.value })}
                   placeholder="1"
                 />
+                {validationErrors.min_order && (
+                  <p className="text-sm text-destructive">{validationErrors.min_order}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -514,6 +543,9 @@ export default function NewProductPageClient() {
                   <option value="available">Disponible</option>
                   <option value="unavailable">Indisponible</option>
                 </select>
+                {validationErrors.status && (
+                  <p className="text-sm text-destructive">{validationErrors.status}</p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -528,6 +560,9 @@ export default function NewProductPageClient() {
                   <option value="fixed">Fixe</option>
                   <option value="percentage">Pourcentage</option>
                 </select>
+                {validationErrors.commission_type && (
+                  <p className="text-sm text-destructive">{validationErrors.commission_type}</p>
+                )}
               </div>
 
               {formData.commission_type !== "none" && (
@@ -538,10 +573,27 @@ export default function NewProductPageClient() {
                     type="number"
                     step="0.01"
                     min="0"
+                    max={
+                      formData.commission_type === "percentage"
+                        ? 20
+                        : formData.price
+                          ? parseFloat(formData.price) * 0.2
+                          : undefined
+                    }
                     value={formData.commission_value}
                     onChange={(e) => setFormData({ ...formData, commission_value: e.target.value })}
                     placeholder={formData.commission_type === "percentage" ? "10" : "50"}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {formData.commission_type === "percentage"
+                      ? "Maximum 20 % du prix du produit"
+                      : formData.price
+                        ? `Maximum ${(parseFloat(formData.price) * 0.2).toFixed(2)} (20 % du prix)`
+                        : "Maximum 20 % du prix du produit"}
+                  </p>
+                  {validationErrors.commission_value && (
+                    <p className="text-sm text-destructive">{validationErrors.commission_value}</p>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -560,6 +612,9 @@ export default function NewProductPageClient() {
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   placeholder="Ville, Pays"
                 />
+                {validationErrors.location && (
+                  <p className="text-sm text-destructive">{validationErrors.location}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -609,6 +664,9 @@ export default function NewProductPageClient() {
                 <Plus className="mr-2 h-4 w-4" />
                 Ajouter une caractéristique
               </Button>
+              {validationErrors.features && (
+                <p className="text-sm text-destructive">{validationErrors.features}</p>
+              )}
             </CardContent>
           </Card>
 
@@ -657,6 +715,9 @@ export default function NewProductPageClient() {
                 <Plus className="mr-2 h-4 w-4" />
                 Ajouter une spécification
               </Button>
+              {validationErrors.specifications && (
+                <p className="text-sm text-destructive">{validationErrors.specifications}</p>
+              )}
             </CardContent>
           </Card>
 
@@ -734,50 +795,6 @@ export default function NewProductPageClient() {
           </Button>
         </div>
       </form>
-
-      <Dialog open={commissionConsentOpen} onOpenChange={(open) => { if (!open) rejectCommission(); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Paiement et commission Komi</DialogTitle>
-            <DialogDescription>
-              Activation des commissions et modalités de paiement sécurisé
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 text-sm text-muted-foreground">
-            <p>
-              En activant une commission, vous acceptez que chaque achat de ce produit se fasse via les moyens de paiement sécurisés de Komi.
-            </p>
-            <p>
-              L'acheteur enverra l'argent sur l'un des comptes de Komi. Une fois le paiement confirmé, Komi vous contactera pour organiser le dépôt de la marchandise. Vous serez payé une fois que le client aura reçu sa livraison.
-            </p>
-            <p>
-              Ce processus garantit une transaction sécurisée pour toutes les parties.
-            </p>
-
-            <div className="space-y-2 rounded-md bg-muted p-4">
-              <p className="font-medium text-foreground">Types de commission</p>
-              <ul className="list-disc space-y-1 pl-4">
-                <li>
-                  <strong>Fixe</strong> : un montant fixe est reversé pour chaque vente. Exemple&nbsp;: 5 $ par produit vendu.
-                </li>
-                <li>
-                  <strong>Pourcentage</strong> : la commission est calculée comme un pourcentage du prix total de la commande. Exemple&nbsp;: 10 % du montant payé par l'acheteur.
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={rejectCommission}>
-              Refuser
-            </Button>
-            <Button type="button" onClick={acceptCommission}>
-              J'accepte
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

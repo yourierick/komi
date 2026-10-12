@@ -32,7 +32,7 @@ class PublicRentalResource extends JsonResource
             'payment_frequency' => $this->payment_frequency,
             'verified' => $this->verified,
             'rating' => $this->rating,
-            'total_reviews' => $this->total_reviews,
+            'total_reviews' => $this->approved_reviews ?? 0,
             'commission_type' => $this->commission_type,
             'commission_value' => $this->commission_value,
             'status' => $this->status,

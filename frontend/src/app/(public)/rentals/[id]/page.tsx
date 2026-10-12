@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Minus, Plus, Star, TrendingUp, User, BadgeCheck } from "lucide-react";
+import { Loader2, MapPin, MessageCircle, Minus, Plus, Star, TrendingUp, User, BadgeCheck } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { useEffect, useState } from "react";
@@ -111,6 +111,7 @@ export default function RentalDetailPage() {
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   const [quantity, setQuantity] = useState(1);
+  const [sharing, setSharing] = useState(false);
   const [reseller, setReseller] = useState<null | { id: number; name: string; email: string }>(null);
   const refCode = searchParams.get('ref');
 
@@ -121,7 +122,7 @@ export default function RentalDetailPage() {
         const response = await publicRentalAPI.get(id);
         const rentalData = response.data.data;
         setRental(rentalData);
-        setSelectedImage(rentalData.images?.[0] || null);
+        setSelectedImage(rentalData.images?.find((img: string) => img) || null);
       } catch (error) {
         console.error("Error fetching rental:", error);
       } finally {
@@ -151,8 +152,8 @@ export default function RentalDetailPage() {
   }, [refCode]);
 
   const canResell = React.useMemo(() => {
-    if (!rental) return false;
-    const isNotOwner = rental.user?.id !== user?.id;
+    if (!rental || !user) return false;
+    const isNotOwner = rental.user?.id !== user.id;
     const hasCommission = rental.commission_type !== 'none' && (rental.commission_value ?? 0) > 0;
     return isNotOwner && hasCommission;
   }, [user, rental]);
@@ -194,15 +195,15 @@ export default function RentalDetailPage() {
           })}
         </div>
         {rating > 0 && (
-          <span className="text-sm text-muted-foreground">
-            ({rating.toFixed(1)})
+          <span className="text-sm font-medium tabular-nums">
+            {rating.toFixed(1)}
           </span>
         )}
-        {rental?.total_reviews && rental.total_reviews > 0 && (
+        {rental?.total_reviews && rental.total_reviews > 0 ? (
           <span className="text-sm text-muted-foreground">
-            ({rental.total_reviews} avis)
+            · {rental.total_reviews} avis
           </span>
-        )}
+        ):(<></>)}
       </div>
     );
   };
@@ -277,7 +278,8 @@ export default function RentalDetailPage() {
     <div className="flex min-h-screen flex-col">
       <main className="flex-1 py-10">
         <div className={`
-          container px-4
+          container px-4 animate-in fade-in duration-300 ease-out
+          motion-safe:slide-in-from-bottom-2
           md:px-6
         `}>
           {/* Back link */}
@@ -300,7 +302,7 @@ export default function RentalDetailPage() {
               {/* Main image with zoom */}
               <div
                 className={`
-                  relative aspect-square cursor-crosshair overflow-hidden
+                  relative aspect-square cursor-zoom-in overflow-hidden
                   rounded-lg bg-muted
                 `}
                 onMouseEnter={handleImageMouseEnter}
@@ -311,9 +313,10 @@ export default function RentalDetailPage() {
                   <img
                     alt={rental.title}
                     className={`
-                      h-full w-full object-cover transition-transform
-                      duration-200 ease-out
+                      h-full w-full object-cover animate-in fade-in
+                      duration-200 ease-out transition-transform
                     `}
+                    key={selectedImage}
                     src={selectedImage}
                     style={{
                       transform: isZoomed ? "scale(2.5)" : "scale(1)",
@@ -339,19 +342,22 @@ export default function RentalDetailPage() {
               </div>
 
               {/* Thumbnail gallery */}
-              {rental.images && rental.images.length > 1 && (
+              {rental.images && rental.images.filter(Boolean).length > 1 && (
                 <div className="grid grid-cols-4 gap-2">
-                  {rental.images.map((image, index) => (
+                  {rental.images.filter(Boolean).map((image, index) => (
                     <button
+                      aria-label={`Image ${index + 1} de ${rental.title}`}
+                      aria-pressed={selectedImage === image}
                       className={`
                         relative aspect-square overflow-hidden rounded-md
-                        border-2 transition-colors duration-200 ease-out
+                        border-2 transition-[border-color,transform] duration-200
+                        ease-out active:scale-95
                         ${
                         selectedImage === image
                           ? "border-primary"
                           : `
                             border-transparent
-                            hover:border-muted-foreground
+                            hover-fine:border-muted-foreground
                           `
                       }
                       `}
@@ -359,7 +365,8 @@ export default function RentalDetailPage() {
                       onClick={() => setSelectedImage(image)}
                     >
                       <img
-                        alt={`${rental.title} ${index + 1}`}
+                        alt=""
+                        aria-hidden="true"
                         className="h-full w-full object-cover"
                         src={image}
                       />
@@ -373,7 +380,7 @@ export default function RentalDetailPage() {
             <div className="flex flex-col">
               {/* Title & rating */}
               <div className="mb-6">
-                <h1 className="text-3xl font-bold">{rental.title}</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-balance">{rental.title}</h1>
 
                 <div className="mt-2 flex items-center gap-2">
                   {/* Stars */}
@@ -391,37 +398,63 @@ export default function RentalDetailPage() {
                 <p className="text-lg font-medium text-muted-foreground">
                   {CATEGORY_LABELS[rental.category] || rental.category}
                 </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-3xlf font-bold">
+                <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                  <span className="text-3xl font-bold tabular-nums">
                     {getCurrencySymbol(rental.currency)}{Number(rental.price).toFixed(2)}
                   </span>
-                  <span className="text-xl text-muted-foreground">
+                  <span className="text-lg text-muted-foreground">
                     {PAYMENT_FREQUENCY_LABELS[rental.payment_frequency] || rental.payment_frequency}
                   </span>
                   {rental.old_price && (
-                    <span className="text-xl text-muted-foreground line-through">
+                    <span className="text-xl text-muted-foreground line-through tabular-nums">
                       {getCurrencySymbol(rental.currency)}{Number(rental.old_price).toFixed(2)}
                     </span>
                   )}
                   {rental.discount_percent && (
                     <span className={`
-                      rounded bg-red-500 px-2 py-1 text-sm font-semibold
+                      rounded-full bg-red-500 px-2 py-1 text-xs font-bold
                       text-white
                     `}>
                       -{Number(rental.discount_percent).toFixed(0)}%
                     </span>
                   )}
                 </div>
+
+                {/* Commission */}
+                {rental.commission_type && rental.commission_type !== 'none' && rental.commission_value && (
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <div className={`
+                      flex items-center gap-2 rounded-lg border
+                      border-purple-200 bg-purple-50 px-4 py-3
+                    `}>
+                      <div className={`
+                        flex h-10 w-10 items-center justify-center rounded-full
+                        bg-purple-100
+                      `}>
+                        <TrendingUp className="h-5 w-5 text-purple-700" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-purple-900">Commission à la location</p>
+                        <p className="text-[12px] font-semibold text-purple-700 tabular-nums">
+                          {rental.commission_type === 'fixed'
+                            ? `${getCurrencySymbol(rental.currency)}${Number(rental.commission_value).toFixed(2)} par vente`
+                            : `${Number(rental.commission_value).toFixed(0)}% par location`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Location */}
-              <div className="mb-6">
-                <p className="text-sm text-muted-foreground">
-                  {rental.location && `${rental.location}, `}
-                  {rental.city && `${rental.city}, `}
-                  {rental.country}
-                </p>
-              </div>
+              {(rental.location || rental.city || rental.country) && (
+                <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4 shrink-0" />
+                  <span>
+                    {[rental.location, rental.city, rental.country].filter(Boolean).join(', ')}
+                  </span>
+                </div>
+              )}
 
               {/* Description */}
               <p className="mb-6 text-muted-foreground">
@@ -431,9 +464,16 @@ export default function RentalDetailPage() {
               {/* Status */}
               <div aria-atomic="true" aria-live="polite" className="mb-6">
                 {rental.status === "available" ? (
-                  <p className="text-sm font-medium text-green-600">Disponible</p>
+                  <p className="flex items-center gap-2 text-sm font-medium text-green-600">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 motion-safe:animate-ping" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                    </span>
+                    Disponible
+                  </p>
                 ) : (
-                  <p className="text-sm font-medium text-red-500">
+                  <p className="flex items-center gap-2 text-sm font-medium text-red-500">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
                     Non disponible
                   </p>
                 )}
@@ -442,9 +482,9 @@ export default function RentalDetailPage() {
               {/* Seller info */}
               {rental.user && (
                 <div className={`
-                  mb-6 rounded-lg border border-gray-200 bg-muted p-4
+                  mb-6 rounded-lg border border-border bg-muted p-4
                 `}>
-                  <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Fournisseur</h3>
+                  <h3 className="mb-3 text-sm font-semibold">Fournisseur</h3>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-4 w-4 text-muted-foreground" />
@@ -452,50 +492,58 @@ export default function RentalDetailPage() {
                       {rental.user.certified && (
                         <BadgeCheck className="h-4 w-4 text-blue-500" aria-label="Fournisseur certifié" />
                       )}
-                      {rental.user.rating && rental.user.rating > 0 && (
+                      {rental.user.rating && rental.user.rating > 0 ? (
                         <div className="flex items-center gap-1 ml-2">
                           <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                           <span className="text-xs font-medium">{rental.user.rating.toFixed(1)}</span>
                         </div>
-                      )}
+                      ):('')}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Quantity selector & Add to cart */}
-              <div className={`
-                mb-6 flex flex-col gap-4
-                sm:flex-row sm:items-center
-              `}>
-                {/* Quantity */}
-                <div className="flex items-center">
-                  <Button
-                    aria-label="Decrease quantity"
-                    disabled={quantity <= 1}
-                    onClick={() => handleQuantityChange(quantity - 1)}
-                    size="icon"
-                    variant="outline"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
+              {/* Quantity selector & actions */}
+              {(!user || user.id !== rental.user?.id) && (
+                <div className={`
+                  mb-6 flex flex-col gap-4
+                  sm:flex-row sm:items-center
+                `}>
+                  {/* Quantity stepper */}
+                  <div className={`
+                    flex items-center rounded-md border border-input
+                  `}>
+                    <Button
+                      aria-label="Réduire la quantité"
+                      className="h-9 w-9 rounded-r-none"
+                      disabled={quantity <= 1}
+                      onClick={() => handleQuantityChange(quantity - 1)}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span
+                      aria-live="polite"
+                      className={`
+                        w-12 text-center text-sm font-semibold tabular-nums
+                        select-none
+                      `}
+                    >
+                      {quantity}
+                    </span>
+                    <Button
+                      aria-label="Augmenter la quantité"
+                      className="h-9 w-9 rounded-l-none"
+                      onClick={() => handleQuantityChange(quantity + 1)}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
 
-                  <span className="w-12 text-center select-none">
-                    {quantity}
-                  </span>
-
-                  <Button
-                    aria-label="Increase quantity"
-                    onClick={() => handleQuantityChange(quantity + 1)}
-                    size="icon"
-                    variant="outline"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Chat with supplier */}
-                {!user || user.id !== rental.user?.id ? (
+                  {/* Chat with supplier */}
                   <Button
                     className="flex-1"
                     disabled={rental.status !== "available"}
@@ -519,20 +567,21 @@ export default function RentalDetailPage() {
                     <MessageCircle className="mr-2 h-4 w-4" />
                     Precommander et Discuter
                   </Button>
-                ) : null}
 
-                {/* Resale button */}
-                {canResell && (
+                  {/* Resale button */}
+                  {canResell && (
                   <Button
                     className={`
                       flex-1 bg-gradient-to-r from-green-500 to-emerald-600
                       text-white shadow-md shadow-green-500/20
-                      hover:from-green-600 hover:to-emerald-700
-                      hover:shadow-lg hover:shadow-green-500/30
-                      hover:-translate-y-0.5
-                      transition-all duration-200
+                      transition-[transform,box-shadow] duration-200 ease-out
+                      hover-fine:from-green-600 hover-fine:to-emerald-700
+                      hover-fine:shadow-lg hover-fine:shadow-green-500/30
+                      hover-fine:-translate-y-0.5
                     `}
+                    disabled={sharing}
                     onClick={async () => {
+                      setSharing(true);
                       try {
                         const response = await resellerLinkAPI.createRentalLink(rental.id);
                         const link = response.data.data.link;
@@ -580,14 +629,21 @@ export default function RentalDetailPage() {
                           console.error("Error creating reseller link:", error);
                           toast.error("Erreur lors de la création du lien de revente");
                         }
+                      } finally {
+                        setSharing(false);
                       }
                     }}
                   >
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    Républier
+                    {sharing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                    )}
+                    Parrainer
                   </Button>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -601,35 +657,36 @@ export default function RentalDetailPage() {
             {/* Conditions */}
             {rental.conditions && (
               <section>
-                <h2 className="mb-4 text-2xl font-bold">Conditions</h2>
-                <ul className="space-y-2">
-                  {Array.isArray(rental.conditions) ? (
-                    (rental.conditions as any[]).map((condition, index) => (
-                      <li className="flex items-start" key={`condition-${index}`}>
+                <h2 className="mb-4 text-xl font-semibold tracking-tight">Conditions</h2>
+                {Array.isArray(rental.conditions) && rental.conditions.length > 0 ? (
+                  <ul className="space-y-2.5">
+                    {(rental.conditions as any[]).map((condition, index) => (
+                      <li className="flex items-start gap-2.5" key={`condition-${index}`}>
                         <span className={`
-                          mt-1 mr-2 h-2 w-2 rounded-full bg-primary
+                          mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary
                         `} />
-                        <span>
-                          <strong>{condition.key}</strong> : {condition.value}
+                        <span className="text-sm">
+                          <strong className="font-medium">{condition.key}</strong>
+                          <span className="text-muted-foreground"> : {condition.value}</span>
                         </span>
                       </li>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground">{String(rental.conditions)}</p>
-                  )}
-                </ul>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{String(rental.conditions)}</p>
+                )}
               </section>
             )}
 
             {/* Specifications */}
             {rental.specifications && (
               <section>
-                <h2 className="mb-4 text-2xl font-bold">Spécifications</h2>
-                <div className="space-y-2">
+                <h2 className="mb-4 text-xl font-semibold tracking-tight">Spécifications</h2>
+                <div className="divide-y">
                   {Array.isArray(rental.specifications) ? (
                     rental.specifications.map((spec: any, index: number) => (
                       <div
-                        className="flex justify-between border-b pb-2 text-sm"
+                        className="flex justify-between py-2.5 text-sm"
                         key={index}
                       >
                         <span className="font-medium capitalize">
@@ -643,7 +700,7 @@ export default function RentalDetailPage() {
                   ) : typeof rental.specifications === "object" ? (
                     Object.entries(rental.specifications).map(([key, value]) => (
                       <div
-                        className="flex justify-between border-b pb-2 text-sm"
+                        className="flex justify-between py-2.5 text-sm"
                         key={key}
                       >
                         <span className="font-medium capitalize">
@@ -655,14 +712,14 @@ export default function RentalDetailPage() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground">{String(rental.specifications)}</p>
+                    <p className="text-sm text-muted-foreground">{String(rental.specifications)}</p>
                   )}
                 </div>
               </section>
             )}
 
             {/* Comments and Reviews */}
-            <section className="mt-8">
+            <section className="mt-8 md:col-span-2">
               <Comments 
                 itemId={rental.id} 
                 itemOwnerId={rental.user?.id}

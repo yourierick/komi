@@ -75,4 +75,12 @@ class Service extends Model
     {
         return $this->comments_count ?? $this->comments()->count();
     }
+
+    /**
+     * Get number of approved comments (publicly visible reviews)
+     */
+    public function getApprovedReviewsAttribute(): int
+    {
+        return $this->approved_comments_count ?? $this->approvedComments()->count();
+    }
 }

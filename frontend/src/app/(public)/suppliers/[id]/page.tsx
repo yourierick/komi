@@ -103,7 +103,11 @@ export default function SupplierDetailPage() {
           ← Retour aux fournisseurs
         </Button>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className={`
+          grid gap-6 animate-in fade-in duration-300 ease-out
+          motion-safe:slide-in-from-bottom-2
+          lg:grid-cols-3
+        `}>
           {/* Supplier Info Card */}
           <div className="lg:col-span-1">
             <div className="rounded-lg border bg-card p-6">
@@ -112,10 +116,10 @@ export default function SupplierDetailPage() {
                   <img
                     src={supplier.picture}
                     alt={supplier.name}
-                    className="h-32 w-32 rounded-full object-cover mb-4"
+                    className="h-32 w-32 rounded-full object-cover mb-4 ring-2 ring-border"
                   />
                 ) : (
-                  <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center mb-4 ring-2 ring-border">
                     <User className="h-16 w-16 text-muted-foreground" />
                   </div>
                 )}
@@ -128,13 +132,13 @@ export default function SupplierDetailPage() {
 
                 {/* Rating */}
                 {supplier.total_reviews > 0 && (
-                  <div className="flex items-center gap-2 mb-4">
+                  <div className="flex items-center gap-1.5 mb-4">
                     <div className="flex items-center">
                       <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                      <span className="ml-1 font-semibold">{supplier.rating.toFixed(1)}</span>
+                      <span className="ml-1 font-semibold tabular-nums">{supplier.rating.toFixed(1)}</span>
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      ({supplier.total_reviews} avis)
+                      · {supplier.total_reviews} avis
                     </span>
                   </div>
                 )}
@@ -143,19 +147,19 @@ export default function SupplierDetailPage() {
                 <div className="w-full mt-6 space-y-3 text-left">
                   {supplier.email && (
                     <div className="flex items-center gap-2 text-sm">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="break-all">{supplier.email}</span>
                     </div>
                   )}
                   {supplier.phone && (
                     <div className="flex items-center gap-2 text-sm">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{supplier.phone}</span>
+                      <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="tabular-nums">{supplier.phone}</span>
                     </div>
                   )}
                   {supplier.address && (
                     <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span>{supplier.address}</span>
                     </div>
                   )}
@@ -165,15 +169,15 @@ export default function SupplierDetailPage() {
                 <div className="w-full mt-6 pt-6 border-t space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Produits</span>
-                    <span className="font-medium">{supplier.products_count}</span>
+                    <span className="font-medium tabular-nums">{supplier.products_count}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Locations</span>
-                    <span className="font-medium">{supplier.rentals_count}</span>
+                    <span className="font-medium tabular-nums">{supplier.rentals_count}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Services</span>
-                    <span className="font-medium">{supplier.services_count}</span>
+                    <span className="font-medium tabular-nums">{supplier.services_count}</span>
                   </div>
                 </div>
               </div>
@@ -189,14 +193,21 @@ export default function SupplierDetailPage() {
                 {supplier.products_count > 0 && (
                   <Button
                     variant="outline"
-                    className="h-auto flex-col items-start p-6 text-left transition-all duration-200 hover:border-primary hover:shadow-md active:scale-[0.97]"
+                    className={`
+                      group h-auto flex-col items-start p-6 text-left
+                      transition-[border-color,box-shadow] duration-200 ease-out
+                      hover-fine:border-primary hover-fine:shadow-md
+                    `}
                     onClick={() => router.push(`/products?supplier=${supplier.id}`)}
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <Package className="h-6 w-6 transition-transform duration-200 group-hover:scale-110" />
+                      <Package className={`
+                        h-6 w-6 transition-transform duration-200 ease-out
+                        motion-safe:group-hover:scale-110
+                      `} />
                       <span className="text-lg font-semibold">Produits</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground tabular-nums">
                       {supplier.products_count} produit{supplier.products_count > 1 ? 's' : ''} disponible{supplier.products_count > 1 ? 's' : ''}
                     </p>
                   </Button>
@@ -206,14 +217,21 @@ export default function SupplierDetailPage() {
                 {supplier.rentals_count > 0 && (
                   <Button
                     variant="outline"
-                    className="h-auto flex-col items-start p-6 text-left transition-all duration-200 hover:border-primary hover:shadow-md active:scale-[0.97]"
+                    className={`
+                      group h-auto flex-col items-start p-6 text-left
+                      transition-[border-color,box-shadow] duration-200 ease-out
+                      hover-fine:border-primary hover-fine:shadow-md
+                    `}
                     onClick={() => router.push(`/rentals?supplier=${supplier.id}`)}
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <Package className="h-6 w-6 transition-transform duration-200 group-hover:scale-110" />
+                      <Package className={`
+                        h-6 w-6 transition-transform duration-200 ease-out
+                        motion-safe:group-hover:scale-110
+                      `} />
                       <span className="text-lg font-semibold">Biens de location</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground tabular-nums">
                       {supplier.rentals_count} bien{supplier.rentals_count > 1 ? 's' : ''} de location disponible{supplier.rentals_count > 1 ? 's' : ''}
                     </p>
                   </Button>
@@ -223,14 +241,21 @@ export default function SupplierDetailPage() {
                 {supplier.services_count > 0 && (
                   <Button
                     variant="outline"
-                    className="h-auto flex-col items-start p-6 text-left transition-all duration-200 hover:border-primary hover:shadow-md active:scale-[0.97]"
+                    className={`
+                      group h-auto flex-col items-start p-6 text-left
+                      transition-[border-color,box-shadow] duration-200 ease-out
+                      hover-fine:border-primary hover-fine:shadow-md
+                    `}
                     onClick={() => router.push(`/services?supplier=${supplier.id}`)}
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <Building2 className="h-6 w-6 transition-transform duration-200 group-hover:scale-110" />
+                      <Building2 className={`
+                        h-6 w-6 transition-transform duration-200 ease-out
+                        motion-safe:group-hover:scale-110
+                      `} />
                       <span className="text-lg font-semibold">Services</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground tabular-nums">
                       {supplier.services_count} service{supplier.services_count > 1 ? 's' : ''} disponible{supplier.services_count > 1 ? 's' : ''}
                     </p>
                   </Button>

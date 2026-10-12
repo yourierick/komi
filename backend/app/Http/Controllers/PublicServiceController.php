@@ -20,14 +20,14 @@ class PublicServiceController extends Controller
             $query->where('user_id', $request->supplier);
         }
 
-        $services = $query->withCount('comments')->get();
+        $services = $query->withCount('approvedComments')->get();
 
         return PublicServiceResource::collection($services);
     }
 
     public function show($id)
     {
-        $service = Service::where('status', 'available')->withCount('comments')->with('user')->find($id);
+        $service = Service::where('status', 'available')->withCount('approvedComments')->with('user')->find($id);
 
         if (!$service) {
             return response()->json(['message' => 'Service not found'], 404);
