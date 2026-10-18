@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Rental;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -224,12 +225,13 @@ class RentalService
             }
 
             $value = (float) $requestData['commission_value'];
+            $cap = Setting::maxResellerCommissionPercentage();
             $limit = $commissionType === 'percentage'
-                ? 20
-                : (float) ($requestData['price'] ?? $rental?->price ?? 0) * 0.2;
+                ? $cap
+                : (float) ($requestData['price'] ?? $rental?->price ?? 0) * $cap / 100;
 
             if ($value > $limit) {
-                $validator->errors()->add('commission_value', 'La commission ne peut pas dépasser 20% du prix de la location.');
+                $validator->errors()->add('commission_value', "La commission ne peut pas dépasser {$cap}% du prix de la location.");
             }
         });
     }

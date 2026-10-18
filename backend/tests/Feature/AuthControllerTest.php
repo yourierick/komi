@@ -299,4 +299,66 @@ class AuthControllerTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['picture']);
     }
+
+    public function test_change_password_updates_hash_and_old_credentials_fail()
+    {
+        $user = User::factory()->create(['password' => bcrypt('ancien-mdp-1')]);
+
+        $this->actingAs($user)
+            ->putJson('/api/v1/auth/password', [
+                'current_password' => 'ancien-mdp-1',
+                'new_password' => 'Nouveau_mdp9!',
+                'new_password_confirmation' => 'Nouveau_mdp9!',
+            ])
+            ->assertStatus(200);
+
+        $this->assertTrue(Hash::check('Nouveau_mdp9!', $user->fresh()->password));
+        $this->assertFalse(Hash::check('ancien-mdp-1', $user->fresh()->password));
+    }
+
+    public function test_change_password_rejects_wrong_current_password()
+    {
+        $user = User::factory()->create(['password' => bcrypt('ancien-mdp-1')]);
+
+        $this->actingAs($user)
+            ->putJson('/api/v1/auth/password', [
+                'current_password' => 'mauvais',
+                'new_password' => 'Nouveau_mdp9!',
+                'new_password_confirmation' => 'Nouveau_mdp9!',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['current_password']);
+    }
+
+    public function test_change_password_validates_strength_and_confirmation()
+    {
+        $user = User::factory()->create(['password' => bcrypt('ancien-mdp-1')]);
+
+        $this->actingAs($user)
+            ->putJson('/api/v1/auth/password', [
+                'current_password' => 'ancien-mdp-1',
+                'new_password' => 'faible',
+                'new_password_confirmation' => 'faible',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['new_password']);
+
+        $this->actingAs($user)
+            ->putJson('/api/v1/auth/password', [
+                'current_password' => 'ancien-mdp-1',
+                'new_password' => 'Nouveau_mdp9!',
+                'new_password_confirmation' => 'Different_mdp9!',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['new_password']);
+    }
+
+    public function test_change_password_requires_authentication()
+    {
+        $this->putJson('/api/v1/auth/password', [
+            'current_password' => 'x',
+            'new_password' => 'Nouveau_mdp9!',
+            'new_password_confirmation' => 'Nouveau_mdp9!',
+        ])->assertStatus(401);
+    }
 }

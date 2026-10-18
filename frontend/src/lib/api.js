@@ -130,6 +130,7 @@ api.interceptors.response.use(
           { path: '/', exact: true },
           { path: '/auth/sign-in', exact: false },
           { path: '/auth/sign-up', exact: false },
+          { path: '/admin/login', exact: false },
           { path: '/products', exact: false },
           { path: '/rentals', exact: false },
         ];
@@ -178,6 +179,7 @@ export const authAPI = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+  changePassword: (data) => api.put("/auth/password", data),
 };
 
 export const itemAPI = {
@@ -353,6 +355,52 @@ export const supplierReviewAPI = {
   update: (reviewId, data) => api.put(`/supplier-reviews/${reviewId}`, data),
   delete: (reviewId) => api.delete(`/supplier-reviews/${reviewId}`),
   approve: (reviewId, approved) => api.patch(`/supplier-reviews/${reviewId}/approve`, { approved }),
+};
+
+export const adminAPI = {
+  login: (data) => api.post("/admin/login", data),
+  dashboard: () => api.get("/admin/dashboard"),
+  users: {
+    stats: () => api.get("/admin/users/stats"),
+    list: (params) => api.get("/admin/users", { params }),
+    delete: (id) => api.delete(`/admin/users/${id}`),
+    setStatus: (id, status) => api.patch(`/admin/users/${id}/status`, { status }),
+    certify: (id, certified) =>
+      api.patch(`/admin/users/${id}/certify`, certified === undefined ? {} : { certified }),
+    resetPassword: (id) => api.post(`/admin/users/${id}/reset-password`),
+    catalogue: (id) => api.get(`/admin/users/${id}/catalogue`),
+    catalogueSection: (id, section, params) =>
+      api.get(`/admin/users/${id}/catalogue/${section}`, { params }),
+  },
+  verify: {
+    shop: (id, verified) => api.patch(`/admin/shops/${id}/verify`, { verified }),
+    product: (id, verified) => api.patch(`/admin/products/${id}/verify`, { verified }),
+    rental: (id, verified) => api.patch(`/admin/rentals/${id}/verify`, { verified }),
+    service: (id, verified) => api.patch(`/admin/services/${id}/verify`, { verified }),
+  },
+  sales: {
+    stats: (days) => api.get("/admin/sales/stats", { params: { days } }),
+  },
+  revenues: {
+    list: (params) => api.get("/admin/revenues", { params }),
+    stats: () => api.get("/admin/revenues/stats"),
+  },
+  settings: {
+    get: () => api.get("/admin/settings"),
+    update: (data) => api.patch("/admin/settings", data),
+  },
+  paymentProofs: {
+    list: (params) => api.get("/admin/payment-proofs", { params }),
+  },
+  invoices: {
+    setStatus: (id, status) => api.patch(`/admin/invoices/${id}/status`, { status }),
+  },
+  commissions: {
+    stats: () => api.get("/admin/commissions/stats"),
+    lookup: (code) => api.get(`/admin/commissions/lookup/${code}`),
+    pay: (id) => api.patch(`/admin/commissions/${id}/pay`),
+    reject: (id, notes) => api.patch(`/admin/commissions/${id}/reject`, { notes }),
+  },
 };
 
 // --- Fonction pour vérifier si l'utilisateur est connecté ---

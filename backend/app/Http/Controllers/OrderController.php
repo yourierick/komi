@@ -8,11 +8,13 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Rental;
 use App\Models\Service;
+use App\Models\Setting;
 use App\Services\InvoiceService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
@@ -289,7 +291,7 @@ class OrderController extends Controller
         // order status is driven by the customer (confirm/cancel) and by komi
         // admin operations (paid/refunded/completed) — never by the supplier
         $validated = $request->validate([
-            'payment_method' => 'nullable|in:cash_on_delivery,payment_in_store,manual_payment_via_mobile_money,payment_by_bank_transfer,payment_by_physical_deposit,payment_protected_by_komi',
+            'payment_method' => ['nullable', Rule::in(Setting::enabledPaymentMethods())],
             'shipping_address' => 'nullable|string',
             'billing_address' => 'nullable|string',
             'notes' => 'nullable|string',

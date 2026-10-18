@@ -311,6 +311,13 @@ export function OrdersPageClient() {
     try {
       await orderAPI.sendInvoice(orderId);
       toast.success("Facture envoyée avec succès");
+      // rafraîchit la commande ouverte : generate_invoice devient true et le
+      // bouton passe de "Envoyer" à "Renvoyer"
+      if (viewOrder?.id === orderId || invoiceOrder?.id === orderId) {
+        const response = await orderAPI.get(orderId);
+        if (viewOrder?.id === orderId) setViewOrder(response.data.data);
+        if (invoiceOrder?.id === orderId) setInvoiceOrder(response.data.data);
+      }
       loadOrders();
     } catch (error) {
       toast.error("Erreur lors de l'envoi de la facture");
@@ -710,10 +717,12 @@ export function OrdersPageClient() {
                                 <Eye className="w-4 h-4 mr-2" />
                                 Voir la commande
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openInvoiceModal(order)}>
-                                <FileText className="w-4 h-4 mr-2" />
-                                Voir la facture
-                              </DropdownMenuItem>
+                              {order.generate_invoice && (
+                                <DropdownMenuItem onClick={() => openInvoiceModal(order)}>
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Voir la facture
+                                </DropdownMenuItem>
+                              )}
                               {order.status === 'under_negotiation' && (
                                 <>
                                   <DropdownMenuSeparator />
@@ -820,12 +829,10 @@ export function OrdersPageClient() {
                                     <Eye className="w-4 h-4 mr-2" />
                                     Voir la commande
                                   </DropdownMenuItem>
-                                  {order.generate_invoice && (
-                                    <DropdownMenuItem onClick={() => openInvoiceModal(order)}>
-                                      <FileText className="w-4 h-4 mr-2" />
-                                      Voir la facture
-                                    </DropdownMenuItem>
-                                  )}
+                                  <DropdownMenuItem onClick={() => openInvoiceModal(order)}>
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Voir la facture
+                                  </DropdownMenuItem>
                                   {order.status === 'under_negotiation' && (
                                     <>
                                       <DropdownMenuSeparator />
@@ -1189,10 +1196,12 @@ export function OrdersPageClient() {
                                           </DropdownMenuItem>
                                         </>
                                       )}
-                                      <DropdownMenuItem onClick={() => openInvoiceModal(order)}>
-                                        <FileText className="w-4 h-4 mr-2" />
-                                        Voir la facture
-                                      </DropdownMenuItem>
+                                      {order.generate_invoice && (
+                                        <DropdownMenuItem onClick={() => openInvoiceModal(order)}>
+                                          <FileText className="w-4 h-4 mr-2" />
+                                          Voir la facture
+                                        </DropdownMenuItem>
+                                      )}
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </div>
@@ -1716,6 +1725,12 @@ export function OrdersPageClient() {
           </div>
 
           <DialogFooter className="print-hide p-4 sm:p-6 border-t">
+            {viewOrder?.status === "under_negotiation" && viewOrder?.user?.id !== user?.id && (
+              <Button variant="outline" onClick={() => handleSendInvoice(viewOrder!.id)} disabled={isSending}>
+                {viewOrder.generate_invoice ? <RefreshCcw className="w-4 h-4 mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
+                {isSending ? "Envoi en cours..." : viewOrder.generate_invoice ? "Renvoyer la facture au client" : "Envoyer la facture au client"}
+              </Button>
+            )}
             <Button variant="outline" onClick={handlePrint}>
               <Printer className="w-4 h-4 mr-2" />
               Imprimer
@@ -1972,7 +1987,7 @@ export function OrdersPageClient() {
                   {invoiceOrder.commission_amount > 0 && isSupplier(invoiceOrder) && (
                     <div className="flex justify-between text-amber-600">
                       <span className="text-sm">Commission</span>
-                      <span className="font-semibold">{invoiceOrder.commission_amount.toFixed(2)} {getCurrencySymbol(invoiceOrder.currency)}</span>
+                      <span className="font-semibold">-{invoiceOrder.commission_amount.toFixed(2)} {getCurrencySymbol(invoiceOrder.currency)}</span>
                     </div>
                   )}
                   {(invoiceOrder.invoice?.komi_fees ?? 0) > 0 && isSupplier(invoiceOrder) && (
@@ -1981,6 +1996,12 @@ export function OrdersPageClient() {
                       <span className="font-semibold">-{invoiceOrder.invoice!.komi_fees.toFixed(2)} {getCurrencySymbol(invoiceOrder.currency)}</span>
                     </div>
                   )}
+                  {invoiceOrder.commission_amount > 0 && isSupplier(invoiceOrder) && (
+                    <div className="flex justify-between text-amber-600">
+                      <span className="text-sm">Total à recevoir</span>
+                      <span className="font-semibold">{(invoiceOrder.total_amount - invoiceOrder.commission_amount - (invoiceOrder.invoice?.komi_fees ?? 0)).toFixed(2)} {getCurrencySymbol(invoiceOrder.currency)}</span>
+                    </div>
+                  )}  
                 </div>
               </div>
 

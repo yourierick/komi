@@ -29,6 +29,7 @@ class User extends Authenticatable
         'picture',
         'rating',
         'status',
+        'certified',
         'identity_card_type',
         'identity_card',
         'id_card_number'
@@ -53,6 +54,7 @@ class User extends Authenticatable
     {
         return [
             'certified' => 'boolean',
+            'is_admin' => 'boolean',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'rating' => 'decimal:2',

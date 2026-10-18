@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
 
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+        ]);
+
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {

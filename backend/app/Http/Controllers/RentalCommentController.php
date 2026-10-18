@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\RentalCommentResource;
 use App\Models\Rental;
 use App\Models\RentalComment;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -45,7 +46,7 @@ class RentalCommentController extends Controller
 
         $validated['user_id'] = Auth::id();
         $validated['rental_id'] = $rental->id;
-        $validated['approved'] = true;
+        $validated['approved'] = Setting::reviewsAutoApprove();
 
         $comment = RentalComment::create($validated);
         $rental->updateRating();

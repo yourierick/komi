@@ -90,6 +90,11 @@ class Order extends Model
         return $this->hasOne(Invoice::class);
     }
 
+    public function komiRevenue(): HasOne
+    {
+        return $this->hasOne(KomiRevenue::class);
+    }
+
     public function item(): Product|Rental|Service|null
     {
         return $this->product ?? $this->rental ?? $this->service;

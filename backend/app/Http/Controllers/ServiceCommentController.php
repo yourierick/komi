@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ServiceCommentResource;
 use App\Models\Service;
 use App\Models\ServiceComment;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -45,7 +46,7 @@ class ServiceCommentController extends Controller
 
         $validated['user_id'] = Auth::id();
         $validated['service_id'] = $service->id;
-        $validated['approved'] = true;
+        $validated['approved'] = Setting::reviewsAutoApprove();
 
         $comment = ServiceComment::create($validated);
         $service->updateRating();

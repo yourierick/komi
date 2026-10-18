@@ -3,10 +3,11 @@
 namespace App\Services;
 
 use App\Models\Commission;
+use App\Models\KomiRevenue;
 use App\Models\Order;
+use App\Models\Setting;
 use App\Models\Product;
 use App\Models\Rental;
-use App\Models\Service;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -66,12 +67,12 @@ class OrderService
             return;
         }
 
+        // les services ne portent pas de commission revendeur (pas de colonnes
+        // commission_type/commission_value sur la table services)
         if (!empty($validated['product_id'])) {
             $this->calculateProductCommission($validated);
         } elseif (!empty($validated['rental_id'])) {
             $this->calculateRentalCommission($validated);
-        } elseif (!empty($validated['service_id'])) {
-            $this->calculateServiceCommission($validated);
         }
     }
 
@@ -114,25 +115,6 @@ class OrderService
     }
 
     /**
-     * Calculate commission for service
-     */
-    private function calculateServiceCommission(array &$validated): void
-    {
-        $service = Service::find($validated['service_id']);
-        
-        if (!$service || !$service->commission_type || $service->commission_type === 'none') {
-            return;
-        }
-
-        if ($service->commission_type === 'fixed') {
-            $validated['commission_amount'] = $service->commission_value ?? 0;
-        } elseif ($service->commission_type === 'percentage') {
-            $commissionPercentage = $service->commission_value ?? 0;
-            $validated['commission_amount'] = ($validated['total_amount'] * $commissionPercentage) / 100;
-        }
-    }
-
-    /**
      * Create a commission for the reseller when an order is marked as paid.
      * The amount is recalculated on the current total_amount at payment time,
      * so it reflects any price renegotiation that happened after creation.
@@ -143,7 +125,7 @@ class OrderService
             return null;
         }
 
-        $item = $order->product ?? $order->rental ?? $order->service;
+        $item = $order->product ?? $order->rental;
 
         if (!$item || !$item->commission_type || $item->commission_type === 'none') {
             return null;
@@ -163,6 +145,42 @@ class OrderService
                 'status' => 'unpaid',
             ]
         );
+    }
+
+    /**
+     * Record Komi's platform fee when an order is paid. The applied rate and
+     * amount are snapshotted so later rate changes never rewrite history.
+     */
+    public function recordKomiRevenue(Order $order): ?KomiRevenue
+    {
+        $order->loadMissing('invoice');
+        $percentage = Setting::komiFeePercentage();
+
+        // invoice->komi_fees is snapshotted at invoice creation; recompute only
+        // when the order was paid without an invoice
+        $amount = $order->invoice
+            ? (float) $order->invoice->komi_fees
+            : round((float) $order->total_amount * $percentage / 100, 2);
+
+        return KomiRevenue::firstOrCreate(
+            ['order_id' => $order->id],
+            [
+                'invoice_id' => $order->invoice?->id,
+                'amount' => $amount,
+                'fee_percentage' => $percentage,
+                'currency' => $order->currency,
+                'status' => 'collected',
+                'collected_at' => now(),
+            ],
+        );
+    }
+
+    /**
+     * Reverse the platform revenue when a paid order is refunded.
+     */
+    public function refundKomiRevenue(Order $order): void
+    {
+        $order->komiRevenue?->update(['status' => 'refunded']);
     }
 
     /**

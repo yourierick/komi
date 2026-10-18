@@ -6,6 +6,7 @@ import { useAuth } from "~/lib/hooks/use-auth";
 import { shopAPI } from "~/lib/api";
 import { Button } from "~/ui/primitives/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/ui/primitives/card";
+import { Skeleton } from "~/ui/primitives/skeleton";
 import { Plus, Edit, Trash2, Store as StoreIcon, MapPin, Star, CheckCircle, MoreVertical } from "lucide-react";
 
 type Shop = {
@@ -79,9 +80,38 @@ export default function StorePageClient() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Chargement...</h1>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+          <Skeleton className="h-9 w-40" />
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <Skeleton className="h-32 w-full rounded-none" />
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-12 w-12 flex-shrink-0 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-6 w-24 rounded-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
     );

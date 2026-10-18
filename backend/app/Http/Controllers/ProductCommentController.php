@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ProductCommentResource;
 use App\Models\Product;
 use App\Models\ProductComment;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -66,7 +67,7 @@ class ProductCommentController extends Controller
 
         $validated['user_id'] = Auth::id();
         $validated['product_id'] = $product->id;
-        $validated['approved'] = true; // Auto-approve by default
+        $validated['approved'] = Setting::reviewsAutoApprove();
 
         $comment = ProductComment::create($validated);
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\Setting;
 use Illuminate\Support\Str;
 
 class InvoiceService
@@ -51,6 +52,9 @@ class InvoiceService
             'discount_amount' => $order->discount_amount,
             'total_amount' => $order->total_amount,
             'commission_amount' => $order->commission_amount,
+            // frais plateforme snapshotés à l'émission : un changement de taux
+            // ultérieur ne doit pas modifier une facture déjà envoyée
+            'komi_fees' => round((float) $order->total_amount * Setting::komiFeePercentage() / 100, 2),
             'currency' => $order->currency,
             'payment_method' => $order->payment_method,
             'shipping_address' => $order->shipping_address,

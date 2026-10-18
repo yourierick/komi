@@ -14,18 +14,19 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-white to-slate-100 dark:from-neutral-950 dark:to-neutral-900 overflow-hidden">
+    <div className="flex h-dvh bg-gradient-to-br from-white to-slate-100 dark:from-neutral-950 dark:to-neutral-900 overflow-hidden">
       <Sidebar
         onSignOut={signOut}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Navbar
           user={user || undefined}
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+          onSignOut={signOut}
         />
-        <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </div>
     </div>
   );

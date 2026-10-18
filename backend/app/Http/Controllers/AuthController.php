@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\UserResource;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -18,6 +22,12 @@ class AuthController extends Controller
     }
     public function register(Request $request)
     {
+        abort_unless(
+            Setting::registrationEnabled(),
+            403,
+            'Les inscriptions sont actuellement fermées.',
+        );
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -81,5 +91,25 @@ class AuthController extends Controller
             'data' => new UserResource($user),
             'message' => 'Profile updated successfully',
         ]);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed', Password::defaults()],
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => 'Le mot de passe actuel est incorrect.',
+            ]);
+        }
+
+        $user->update(['password' => $validated['new_password']]);
+
+        return response()->json(['message' => 'Mot de passe modifié avec succès']);
     }
 }

@@ -1,5 +1,15 @@
 <?php
 
+use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\AdminCatalogueController;
+use App\Http\Controllers\AdminCommissionController;
+use App\Http\Controllers\AdminInvoiceController;
+use App\Http\Controllers\AdminPaymentProofController;
+use App\Http\Controllers\AdminSalesController;
+use App\Http\Controllers\AdminRevenueController;
+use App\Http\Controllers\AdminSettingController;
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommissionController;
 use App\Http\Controllers\InvoiceController;
@@ -40,6 +50,9 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
 
+    // Admin login (verifies is_admin before opening a session)
+    Route::post('/admin/login', [AdminAuthController::class, 'login']);
+
     // Public product routes (no authentication required)
     Route::get('/public/products', [PublicProductController::class, 'index']);
     Route::get('/public/products/categories', [PublicProductController::class, 'categories']);
@@ -70,6 +83,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/profile', [AuthController::class, 'profile']);
         Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
+        Route::put('/auth/password', [AuthController::class, 'changePassword']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         // Route::get('/user/profile', [UserController::class, 'profile']);
         // Route::put('/user/profile', [UserController::class, 'update']);
@@ -158,6 +172,55 @@ Route::prefix('v1')->group(function () {
         Route::put('/supplier-reviews/{review}', [SupplierReviewController::class, 'update']);
         Route::delete('/supplier-reviews/{review}', [SupplierReviewController::class, 'destroy']);
         Route::patch('/supplier-reviews/{review}/approve', [SupplierReviewController::class, 'approve']);
+    });
+
+    // Admin routes (authentication + administrator privileges required)
+    Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index']);
+
+        // User management
+        Route::get('/users/stats', [AdminUserController::class, 'stats']);
+        Route::get('/users', [AdminUserController::class, 'index']);
+        Route::get('/users/{user}/catalogue', [AdminUserController::class, 'catalogue'])
+            ->whereNumber('user');
+        Route::get('/users/{user}/catalogue/{section}', [AdminUserController::class, 'catalogueSection'])
+            ->whereNumber('user')
+            ->whereIn('section', ['shops', 'products', 'rentals', 'services']);
+        Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])
+            ->whereNumber('user');
+        Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus'])
+            ->whereNumber('user');
+        Route::patch('/users/{user}/certify', [AdminUserController::class, 'updateCertification'])
+            ->whereNumber('user');
+        Route::post('/users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])
+            ->whereNumber('user');
+
+        // Commission payout management
+        Route::get('/commissions/stats', [AdminCommissionController::class, 'stats']);
+        Route::get('/commissions/lookup/{code}', [AdminCommissionController::class, 'show']);
+        Route::patch('/commissions/{commission}/pay', [AdminCommissionController::class, 'pay']);
+        Route::patch('/commissions/{commission}/reject', [AdminCommissionController::class, 'reject']);
+
+        // Sales analytics
+        Route::get('/sales/stats', [AdminSalesController::class, 'stats']);
+
+        // Komi platform revenues
+        Route::get('/revenues/stats', [AdminRevenueController::class, 'stats']);
+        Route::get('/revenues', [AdminRevenueController::class, 'index']);
+
+        // Platform settings
+        Route::get('/settings', [AdminSettingController::class, 'show']);
+        Route::patch('/settings', [AdminSettingController::class, 'update']);
+
+        // Payment proof review
+        Route::get('/payment-proofs', [AdminPaymentProofController::class, 'index']);
+        Route::patch('/invoices/{invoice}/status', [AdminInvoiceController::class, 'updateStatus']);
+
+        // Catalogue item verification
+        Route::patch('/shops/{shop}/verify', [AdminCatalogueController::class, 'verifyShop']);
+        Route::patch('/products/{product}/verify', [AdminCatalogueController::class, 'verifyProduct']);
+        Route::patch('/rentals/{rental}/verify', [AdminCatalogueController::class, 'verifyRental']);
+        Route::patch('/services/{service}/verify', [AdminCatalogueController::class, 'verifyService']);
     });
 
     // Public comment routes

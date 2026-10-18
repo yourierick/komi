@@ -8,6 +8,7 @@ import { Button } from "~/ui/primitives/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/ui/primitives/card";
 import { Input } from "~/ui/primitives/input";
 import { Label } from "~/ui/primitives/label";
+import { Skeleton } from "~/ui/primitives/skeleton";
 import { ArrowLeft, MapPin, Phone, Mail, Building2, Star, CheckCircle, Loader2, Package as PackageIcon } from "lucide-react";
 
 type Shop = {
@@ -232,9 +233,85 @@ export default function ShopDetailPageClient() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Chargement...</h1>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-9 w-24" />
+            <div className="space-y-2">
+              <Skeleton className="h-9 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-36" />
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </div>
+
+        <Skeleton className="h-48 w-full rounded-lg" />
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start gap-4">
+                <Skeleton className="h-20 w-20 rounded-md" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              </div>
+              <div className="flex items-center gap-4 border-t pt-4">
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-5 w-20" />
+              </div>
+              <div className="border-t pt-4">
+                <Skeleton className="h-7 w-20 rounded-full" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-24" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {Array.from({ length: 3 }, (_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-5 w-5 rounded" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-3">
+            <CardHeader>
+              <Skeleton className="h-6 w-40" />
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-40" />
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-3">
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {Array.from({ length: 2 }, (_, i) => (
+                <div key={i} className="space-y-2 rounded-lg border p-4">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       </div>
     );

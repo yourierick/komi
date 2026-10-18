@@ -22,6 +22,11 @@ class OrderObserver
 
         if ($order->status === 'paid') {
             $this->orderService->createCommissionForPaidOrder($order);
+            $this->orderService->recordKomiRevenue($order);
+        }
+
+        if ($order->status === 'refunded') {
+            $this->orderService->refundKomiRevenue($order);
         }
 
         $this->invoiceService->syncInvoiceStatusForOrder($order);

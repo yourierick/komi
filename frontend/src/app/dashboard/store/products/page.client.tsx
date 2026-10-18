@@ -6,6 +6,7 @@ import { useAuth } from "~/lib/hooks/use-auth";
 import { productAPI } from "~/lib/api";
 import { Button } from "~/ui/primitives/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/ui/primitives/card";
+import { Skeleton } from "~/ui/primitives/skeleton";
 import { ConfirmDialog } from "~/ui/components/confirm-dialog";
 import { ArrowLeft, Plus } from "lucide-react";
 import { ProductCard } from "./product-card";
@@ -83,10 +84,40 @@ export function ShopProductsPageClient() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Chargement...</h1>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-9 w-24" />
+            <div className="space-y-2">
+              <Skeleton className="h-9 w-56" />
+              <Skeleton className="h-4 w-72" />
+            </div>
+          </div>
+          <Skeleton className="h-9 w-40" />
         </div>
+
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-40" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }, (_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <Skeleton className="aspect-[4/3] w-full rounded-none" />
+                  <CardContent className="space-y-2 pt-4">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <div className="flex items-center justify-between pt-1">
+                      <Skeleton className="h-6 w-20" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

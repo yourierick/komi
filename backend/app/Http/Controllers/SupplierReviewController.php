@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\SupplierReviewResource;
+use App\Models\Setting;
 use App\Models\SupplierReview;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -53,7 +54,7 @@ class SupplierReviewController extends Controller
             'supplier_id' => $supplierId,
             'rating' => $validated['rating'],
             'comment' => $validated['comment'] ?? null,
-            'approved' => true,
+            'approved' => Setting::reviewsAutoApprove(),
         ]);
 
         return new SupplierReviewResource($review->load('user'));
